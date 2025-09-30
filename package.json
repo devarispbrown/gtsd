@@ -1,0 +1,38 @@
+{
+  "name": "gtsd",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GTSD - Get Things Successfully Done",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,mobile \"pnpm --filter @gtsd/api dev\" \"pnpm --filter @gtsd/mobile start\"",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "typecheck": "pnpm -r typecheck",
+    "db:migrate": "pnpm --filter @gtsd/api db:migrate",
+    "db:seed": "pnpm --filter @gtsd/api db:seed",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-native": "^4.1.0",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.5"
+  },
+  "pnpm": {
+    "overrides": {}
+  }
+}
