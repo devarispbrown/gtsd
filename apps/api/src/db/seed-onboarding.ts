@@ -297,4 +297,4 @@ const runOnboardingSeed = async () => {
   }
 };
 
-runOnboardingSeed();
+void runOnboardingSeed();

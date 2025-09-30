@@ -32,7 +32,7 @@ router.post(
       });
 
       logger.info(
-        { userId: req.userId, body: req.body },
+        { userId: req.userId, body: req.body as Record<string, unknown> },
         'Starting onboarding process'
       );
 

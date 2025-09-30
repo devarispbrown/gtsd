@@ -171,7 +171,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                       mode="date"
                       minimumDate={minimumDate}
                       maximumDate={maximumDate}
-                      theme={theme}
+                      theme={theme === 'system' ? 'auto' : theme}
                       textColor={isDark ? colors.dark.text : colors.light.text}
                     />
                   </View>

@@ -17,6 +17,7 @@ Your SSH key is currently associated with `devarismeroxa` account. You need to a
 ## Option 1: Use SSH with Correct Key (Recommended)
 
 1. **Check your SSH keys:**
+
    ```bash
    ls -la ~/.ssh
    ```
@@ -24,6 +25,7 @@ Your SSH key is currently associated with `devarismeroxa` account. You need to a
 2. **If you have a separate key for personal account, configure SSH:**
 
    Edit `~/.ssh/config`:
+
    ```
    # Personal GitHub account
    Host github-personal
@@ -39,6 +41,7 @@ Your SSH key is currently associated with `devarismeroxa` account. You need to a
    ```
 
 3. **Update remote URL:**
+
    ```bash
    git remote set-url github-personal git@github-personal:devarispbrown/gtsd.git
    ```
@@ -57,6 +60,7 @@ Your SSH key is currently associated with `devarismeroxa` account. You need to a
    - Copy the token
 
 2. **Update remote with token:**
+
    ```bash
    git remote set-url github-personal https://<YOUR_TOKEN>@github.com/devarispbrown/gtsd.git
    ```
@@ -69,11 +73,13 @@ Your SSH key is currently associated with `devarismeroxa` account. You need to a
 ## Option 3: Use GitHub CLI (Easiest)
 
 1. **Install GitHub CLI (if not installed):**
+
    ```bash
    brew install gh
    ```
 
 2. **Authenticate:**
+
    ```bash
    gh auth login
    # Select: GitHub.com
@@ -89,6 +95,7 @@ Your SSH key is currently associated with `devarismeroxa` account. You need to a
 ## After Successful Push
 
 1. **Create Pull Request (if needed):**
+
    ```bash
    gh pr create --base main --head feat/monorepo-scaffold --title "feat: scaffold production-grade monorepo" --body "See DELIVERY_SUMMARY.md for full details"
    ```
@@ -106,4 +113,4 @@ https://github.com/devarispbrown/gtsd/tree/feat/monorepo-scaffold
 
 ---
 
-**Note:** The commit has been verified to contain no sensitive data. All .env files are excluded via .gitignore, and only .env.example with safe development credentials is committed.
+**Note:** The commit has been verified to contain no sensitive data. All .env files are excluded via .gitignore, and only .env.example with safe development credentials is committed.# Test change

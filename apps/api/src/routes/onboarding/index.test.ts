@@ -22,7 +22,7 @@ describe('Onboarding Routes', () => {
       });
 
       expect(response.status).toBe(401);
-      expect(response.body.error).toBeDefined();
+      expect(response.body).toHaveProperty('error');
     });
 
     it('should return 400 for invalid input', async () => {
@@ -36,7 +36,7 @@ describe('Onboarding Routes', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBeDefined();
+      expect(response.body).toHaveProperty('error');
     });
 
     it('should validate date of birth age range', async () => {
@@ -58,7 +58,7 @@ describe('Onboarding Routes', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error.message).toContain('13 and 120 years old');
+      expect((response.body as { error: { message: string } }).error.message).toContain('13 and 120 years old');
     });
 
     it('should validate target date is in future', async () => {
@@ -80,7 +80,7 @@ describe('Onboarding Routes', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error.message).toContain('future');
+      expect((response.body as { error: { message: string } }).error.message).toContain('future');
     });
 
     it('should validate partner contact information', async () => {
@@ -108,7 +108,7 @@ describe('Onboarding Routes', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error.message).toContain('email or phone');
+      expect((response.body as { error: { message: string } }).error.message).toContain('email or phone');
     });
   });
 
@@ -117,7 +117,7 @@ describe('Onboarding Routes', () => {
       const response = await request(app).get('/v1/summary/how-it-works');
 
       expect(response.status).toBe(401);
-      expect(response.body.error).toBeDefined();
+      expect(response.body).toHaveProperty('error');
     });
 
     it.skip('should return 404 if user settings not found', async () => {
@@ -132,7 +132,7 @@ describe('Onboarding Routes', () => {
       }
 
       expect(response.status).toBe(404);
-      expect(response.body.error.message).toContain('settings not found');
+      expect((response.body as { error: { message: string } }).error.message).toContain('settings not found');
     });
   });
 

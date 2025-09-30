@@ -1,12 +1,12 @@
 module.exports = {
   root: true,
   extends: [
-    '@react-native',
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:react/recommended',
     'plugin:react-hooks/recommended',
     'plugin:jsx-a11y/recommended',
+    'prettier', // Turns off conflicting ESLint rules - must be last
   ],
   parser: '@typescript-eslint/parser',
   plugins: ['@typescript-eslint', 'react', 'react-native', 'jsx-a11y'],
