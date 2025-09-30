@@ -3,15 +3,7 @@
  * These functions help validate data at runtime and provide type narrowing
  */
 
-import {
-  TaskType,
-  TaskStatus,
-  EvidenceType,
-  StreakType,
-  PlanStatus,
-  MealType,
-  PhotoType,
-} from './enums';
+import { TaskType, TaskStatus, EvidenceType, MealType, PhotoType } from './enums';
 import { DailyTask, Evidence } from './entities';
 import {
   WorkoutMetadata,
@@ -40,14 +32,18 @@ import {
 /**
  * Type guard for workout tasks
  */
-export const isWorkoutTask = (task: DailyTask): task is DailyTask & { taskType: TaskType.Workout } => {
+export const isWorkoutTask = (
+  task: DailyTask
+): task is DailyTask & { taskType: TaskType.Workout } => {
   return task.taskType === TaskType.Workout;
 };
 
 /**
  * Type guard for supplement tasks
  */
-export const isSupplementTask = (task: DailyTask): task is DailyTask & { taskType: TaskType.Supplement } => {
+export const isSupplementTask = (
+  task: DailyTask
+): task is DailyTask & { taskType: TaskType.Supplement } => {
   return task.taskType === TaskType.Supplement;
 };
 
@@ -61,28 +57,36 @@ export const isMealTask = (task: DailyTask): task is DailyTask & { taskType: Tas
 /**
  * Type guard for hydration tasks
  */
-export const isHydrationTask = (task: DailyTask): task is DailyTask & { taskType: TaskType.Hydration } => {
+export const isHydrationTask = (
+  task: DailyTask
+): task is DailyTask & { taskType: TaskType.Hydration } => {
   return task.taskType === TaskType.Hydration;
 };
 
 /**
  * Type guard for cardio tasks
  */
-export const isCardioTask = (task: DailyTask): task is DailyTask & { taskType: TaskType.Cardio } => {
+export const isCardioTask = (
+  task: DailyTask
+): task is DailyTask & { taskType: TaskType.Cardio } => {
   return task.taskType === TaskType.Cardio;
 };
 
 /**
  * Type guard for weight log tasks
  */
-export const isWeightLogTask = (task: DailyTask): task is DailyTask & { taskType: TaskType.WeightLog } => {
+export const isWeightLogTask = (
+  task: DailyTask
+): task is DailyTask & { taskType: TaskType.WeightLog } => {
   return task.taskType === TaskType.WeightLog;
 };
 
 /**
  * Type guard for progress photo tasks
  */
-export const isProgressPhotoTask = (task: DailyTask): task is DailyTask & { taskType: TaskType.ProgressPhoto } => {
+export const isProgressPhotoTask = (
+  task: DailyTask
+): task is DailyTask & { taskType: TaskType.ProgressPhoto } => {
   return task.taskType === TaskType.ProgressPhoto;
 };
 
@@ -93,7 +97,9 @@ export const isProgressPhotoTask = (task: DailyTask): task is DailyTask & { task
 /**
  * Type guard for workout metadata
  */
-export const isWorkoutMetadata = (metadata: TaskMetadata | null | undefined): metadata is WorkoutMetadata => {
+export const isWorkoutMetadata = (
+  metadata: TaskMetadata | null | undefined
+): metadata is WorkoutMetadata => {
   if (!metadata) return false;
   return 'exerciseName' in metadata || 'sets' in metadata || 'reps' in metadata;
 };
@@ -101,7 +107,9 @@ export const isWorkoutMetadata = (metadata: TaskMetadata | null | undefined): me
 /**
  * Type guard for supplement metadata
  */
-export const isSupplementMetadata = (metadata: TaskMetadata | null | undefined): metadata is SupplementMetadata => {
+export const isSupplementMetadata = (
+  metadata: TaskMetadata | null | undefined
+): metadata is SupplementMetadata => {
   if (!metadata) return false;
   return 'supplementName' in metadata && typeof metadata.supplementName === 'string';
 };
@@ -109,15 +117,19 @@ export const isSupplementMetadata = (metadata: TaskMetadata | null | undefined):
 /**
  * Type guard for meal metadata
  */
-export const isMealMetadata = (metadata: TaskMetadata | null | undefined): metadata is MealMetadata => {
+export const isMealMetadata = (
+  metadata: TaskMetadata | null | undefined
+): metadata is MealMetadata => {
   if (!metadata) return false;
-  return 'mealType' in metadata && Object.values(MealType).includes(metadata.mealType as MealType);
+  return 'mealType' in metadata && Object.values(MealType).includes(metadata.mealType);
 };
 
 /**
  * Type guard for hydration metadata
  */
-export const isHydrationMetadata = (metadata: TaskMetadata | null | undefined): metadata is HydrationMetadata => {
+export const isHydrationMetadata = (
+  metadata: TaskMetadata | null | undefined
+): metadata is HydrationMetadata => {
   if (!metadata) return false;
   return 'targetAmount' in metadata && typeof metadata.targetAmount === 'number';
 };
@@ -125,7 +137,9 @@ export const isHydrationMetadata = (metadata: TaskMetadata | null | undefined): 
 /**
  * Type guard for cardio metadata
  */
-export const isCardioMetadata = (metadata: TaskMetadata | null | undefined): metadata is CardioMetadata => {
+export const isCardioMetadata = (
+  metadata: TaskMetadata | null | undefined
+): metadata is CardioMetadata => {
   if (!metadata) return false;
   return 'activityType' in metadata && typeof metadata.activityType === 'string';
 };
@@ -133,7 +147,9 @@ export const isCardioMetadata = (metadata: TaskMetadata | null | undefined): met
 /**
  * Type guard for weight log metadata
  */
-export const isWeightLogMetadata = (metadata: TaskMetadata | null | undefined): metadata is WeightLogMetadata => {
+export const isWeightLogMetadata = (
+  metadata: TaskMetadata | null | undefined
+): metadata is WeightLogMetadata => {
   if (!metadata) return false;
   return 'previousWeight' in metadata || 'trackBodyFat' in metadata;
 };
@@ -141,9 +157,11 @@ export const isWeightLogMetadata = (metadata: TaskMetadata | null | undefined): 
 /**
  * Type guard for progress photo metadata
  */
-export const isProgressPhotoMetadata = (metadata: TaskMetadata | null | undefined): metadata is ProgressPhotoMetadata => {
+export const isProgressPhotoMetadata = (
+  metadata: TaskMetadata | null | undefined
+): metadata is ProgressPhotoMetadata => {
   if (!metadata) return false;
-  return 'photoType' in metadata && Object.values(PhotoType).includes(metadata.photoType as PhotoType);
+  return 'photoType' in metadata && Object.values(PhotoType).includes(metadata.photoType);
 };
 
 // ============================================================================
@@ -153,7 +171,9 @@ export const isProgressPhotoMetadata = (metadata: TaskMetadata | null | undefine
 /**
  * Type guard for workout metrics
  */
-export const isWorkoutMetrics = (metrics: EvidenceMetrics | null | undefined): metrics is WorkoutMetrics => {
+export const isWorkoutMetrics = (
+  metrics: EvidenceMetrics | null | undefined
+): metrics is WorkoutMetrics => {
   if (!metrics) return false;
   return 'actualSets' in metrics || 'actualReps' in metrics || 'actualWeight' in metrics;
 };
@@ -161,7 +181,9 @@ export const isWorkoutMetrics = (metrics: EvidenceMetrics | null | undefined): m
 /**
  * Type guard for weight log metrics
  */
-export const isWeightLogMetrics = (metrics: EvidenceMetrics | null | undefined): metrics is WeightLogMetrics => {
+export const isWeightLogMetrics = (
+  metrics: EvidenceMetrics | null | undefined
+): metrics is WeightLogMetrics => {
   if (!metrics) return false;
   return 'weight' in metrics && typeof metrics.weight === 'number';
 };
@@ -169,15 +191,23 @@ export const isWeightLogMetrics = (metrics: EvidenceMetrics | null | undefined):
 /**
  * Type guard for cardio metrics
  */
-export const isCardioMetrics = (metrics: EvidenceMetrics | null | undefined): metrics is CardioMetrics => {
+export const isCardioMetrics = (
+  metrics: EvidenceMetrics | null | undefined
+): metrics is CardioMetrics => {
   if (!metrics) return false;
-  return 'duration' in metrics && typeof metrics.duration === 'number' && ('distance' in metrics || 'avgHeartRate' in metrics);
+  return (
+    'duration' in metrics &&
+    typeof metrics.duration === 'number' &&
+    ('distance' in metrics || 'avgHeartRate' in metrics)
+  );
 };
 
 /**
  * Type guard for meal metrics
  */
-export const isMealMetrics = (metrics: EvidenceMetrics | null | undefined): metrics is MealMetrics => {
+export const isMealMetrics = (
+  metrics: EvidenceMetrics | null | undefined
+): metrics is MealMetrics => {
   if (!metrics) return false;
   return 'actualCalories' in metrics && 'actualProtein' in metrics;
 };
@@ -185,7 +215,9 @@ export const isMealMetrics = (metrics: EvidenceMetrics | null | undefined): metr
 /**
  * Type guard for hydration metrics
  */
-export const isHydrationMetrics = (metrics: EvidenceMetrics | null | undefined): metrics is HydrationMetrics => {
+export const isHydrationMetrics = (
+  metrics: EvidenceMetrics | null | undefined
+): metrics is HydrationMetrics => {
   if (!metrics) return false;
   return 'amount' in metrics && typeof metrics.amount === 'number' && !('duration' in metrics);
 };
@@ -193,7 +225,9 @@ export const isHydrationMetrics = (metrics: EvidenceMetrics | null | undefined):
 /**
  * Type guard for supplement metrics
  */
-export const isSupplementMetrics = (metrics: EvidenceMetrics | null | undefined): metrics is SupplementMetrics => {
+export const isSupplementMetrics = (
+  metrics: EvidenceMetrics | null | undefined
+): metrics is SupplementMetrics => {
   if (!metrics) return false;
   return 'taken' in metrics && 'timeTaken' in metrics;
 };
@@ -205,21 +239,27 @@ export const isSupplementMetrics = (metrics: EvidenceMetrics | null | undefined)
 /**
  * Type guard for text log evidence
  */
-export const isTextLogEvidence = (evidence: Evidence): evidence is Evidence & { evidenceType: EvidenceType.TextLog } => {
+export const isTextLogEvidence = (
+  evidence: Evidence
+): evidence is Evidence & { evidenceType: EvidenceType.TextLog } => {
   return evidence.evidenceType === EvidenceType.TextLog;
 };
 
 /**
  * Type guard for metrics evidence
  */
-export const isMetricsEvidence = (evidence: Evidence): evidence is Evidence & { evidenceType: EvidenceType.Metrics } => {
+export const isMetricsEvidence = (
+  evidence: Evidence
+): evidence is Evidence & { evidenceType: EvidenceType.Metrics } => {
   return evidence.evidenceType === EvidenceType.Metrics;
 };
 
 /**
  * Type guard for photo reference evidence
  */
-export const isPhotoReferenceEvidence = (evidence: Evidence): evidence is Evidence & { evidenceType: EvidenceType.PhotoReference } => {
+export const isPhotoReferenceEvidence = (
+  evidence: Evidence
+): evidence is Evidence & { evidenceType: EvidenceType.PhotoReference } => {
   return evidence.evidenceType === EvidenceType.PhotoReference;
 };
 
@@ -230,28 +270,36 @@ export const isPhotoReferenceEvidence = (evidence: Evidence): evidence is Eviden
 /**
  * Type guard for completed tasks
  */
-export const isCompletedTask = (task: DailyTask): task is DailyTask & { status: TaskStatus.Completed } => {
+export const isCompletedTask = (
+  task: DailyTask
+): task is DailyTask & { status: TaskStatus.Completed } => {
   return task.status === TaskStatus.Completed;
 };
 
 /**
  * Type guard for pending tasks
  */
-export const isPendingTask = (task: DailyTask): task is DailyTask & { status: TaskStatus.Pending } => {
+export const isPendingTask = (
+  task: DailyTask
+): task is DailyTask & { status: TaskStatus.Pending } => {
   return task.status === TaskStatus.Pending;
 };
 
 /**
  * Type guard for in-progress tasks
  */
-export const isInProgressTask = (task: DailyTask): task is DailyTask & { status: TaskStatus.InProgress } => {
+export const isInProgressTask = (
+  task: DailyTask
+): task is DailyTask & { status: TaskStatus.InProgress } => {
   return task.status === TaskStatus.InProgress;
 };
 
 /**
  * Type guard for skipped tasks
  */
-export const isSkippedTask = (task: DailyTask): task is DailyTask & { status: TaskStatus.Skipped } => {
+export const isSkippedTask = (
+  task: DailyTask
+): task is DailyTask & { status: TaskStatus.Skipped } => {
   return task.status === TaskStatus.Skipped;
 };
 
@@ -285,9 +333,6 @@ export const isNonEmptyString = (value: unknown): value is string => {
 /**
  * Type guard to check if an object has a specific property
  */
-export const hasProperty = <K extends string>(
-  obj: unknown,
-  key: K
-): obj is Record<K, unknown> => {
+export const hasProperty = <K extends string>(obj: unknown, key: K): obj is Record<K, unknown> => {
   return typeof obj === 'object' && obj !== null && key in obj;
 };

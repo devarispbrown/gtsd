@@ -3,7 +3,7 @@
  * These types define the shape of data exchanged between client and server
  */
 
-import { DailyTask, Evidence, Streak } from './entities';
+import { DailyTask, Evidence } from './entities';
 import { TaskType, EvidenceType } from './enums';
 import { EvidenceMetrics } from './evidence-metrics';
 
@@ -42,18 +42,14 @@ export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 /**
  * Type guard to check if response is successful
  */
-export const isApiSuccess = <T>(
-  response: ApiResponse<T>
-): response is ApiSuccessResponse<T> => {
+export const isApiSuccess = <T>(response: ApiResponse<T>): response is ApiSuccessResponse<T> => {
   return response.success === true;
 };
 
 /**
  * Type guard to check if response is an error
  */
-export const isApiError = <T>(
-  response: ApiResponse<T>
-): response is ApiErrorResponse => {
+export const isApiError = <T>(response: ApiResponse<T>): response is ApiErrorResponse => {
   return response.success === false;
 };
 
@@ -201,9 +197,7 @@ export const isMetricsData = (data: EvidenceData): data is MetricsData => {
 /**
  * Type guard for photo reference data
  */
-export const isPhotoReferenceData = (
-  data: EvidenceData
-): data is PhotoReferenceData => {
+export const isPhotoReferenceData = (data: EvidenceData): data is PhotoReferenceData => {
   return 'photoUrl' in data;
 };
 
@@ -223,28 +217,36 @@ export type LoadingState<T, E = Error> =
 /**
  * Type guard for idle state
  */
-export const isIdle = <T, E>(state: LoadingState<T, E>): state is LoadingState<T, E> & { status: 'idle' } => {
+export const isIdle = <T, E>(
+  state: LoadingState<T, E>
+): state is LoadingState<T, E> & { status: 'idle' } => {
   return state.status === 'idle';
 };
 
 /**
  * Type guard for loading state
  */
-export const isLoading = <T, E>(state: LoadingState<T, E>): state is LoadingState<T, E> & { status: 'loading' } => {
+export const isLoading = <T, E>(
+  state: LoadingState<T, E>
+): state is LoadingState<T, E> & { status: 'loading' } => {
   return state.status === 'loading';
 };
 
 /**
  * Type guard for success state
  */
-export const isSuccess = <T, E>(state: LoadingState<T, E>): state is LoadingState<T, E> & { status: 'success'; data: T } => {
+export const isSuccess = <T, E>(
+  state: LoadingState<T, E>
+): state is LoadingState<T, E> & { status: 'success'; data: T } => {
   return state.status === 'success';
 };
 
 /**
  * Type guard for error state
  */
-export const isError = <T, E>(state: LoadingState<T, E>): state is LoadingState<T, E> & { status: 'error'; error: E } => {
+export const isError = <T, E>(
+  state: LoadingState<T, E>
+): state is LoadingState<T, E> & { status: 'error'; error: E } => {
   return state.status === 'error';
 };
 
