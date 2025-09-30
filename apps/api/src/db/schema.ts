@@ -9,7 +9,9 @@ import {
   jsonb,
   varchar,
   index,
+  pgEnum,
 } from 'drizzle-orm/pg-core';
+import { relations, InferSelectModel, InferInsertModel } from 'drizzle-orm';
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -133,3 +135,412 @@ export const initialPlanSnapshot = pgTable('initial_plan_snapshots', {
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// ============================================================================
+// ENUMS FOR TODAY CHECKLIST FEATURE
+// ============================================================================
+
+export const planStatusEnum = pgEnum('plan_status', ['active', 'completed', 'archived', 'draft']);
+
+export const taskTypeEnum = pgEnum('task_type', [
+  'workout',
+  'supplement',
+  'meal',
+  'hydration',
+  'cardio',
+  'weight_log',
+  'progress_photo',
+]);
+
+export const taskStatusEnum = pgEnum('task_status', [
+  'pending',
+  'in_progress',
+  'completed',
+  'skipped',
+]);
+
+export const evidenceTypeEnum = pgEnum('evidence_type', ['text_log', 'metrics', 'photo_reference']);
+
+export const streakTypeEnum = pgEnum('streak_type', [
+  'workout',
+  'supplement',
+  'meal',
+  'hydration',
+  'cardio',
+  'weight_log',
+  'progress_photo',
+  'overall',
+]);
+
+// ============================================================================
+// PLANS TABLE - Generated daily/weekly plans
+// ============================================================================
+
+export const plans = pgTable(
+  'plans',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    // Plan metadata
+    name: text('name').notNull(),
+    description: text('description'),
+    planType: varchar('plan_type', { length: 20 }).notNull(), // 'daily' or 'weekly'
+
+    // Date range
+    startDate: timestamp('start_date', { withTimezone: true }).notNull(),
+    endDate: timestamp('end_date', { withTimezone: true }).notNull(),
+
+    // Status
+    status: planStatusEnum('status').default('active').notNull(),
+
+    // Completion tracking
+    totalTasks: integer('total_tasks').default(0).notNull(),
+    completedTasks: integer('completed_tasks').default(0).notNull(),
+    completionPercentage: decimal('completion_percentage', { precision: 5, scale: 2 }).default('0'),
+
+    // Metadata
+    generatedAt: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('plans_user_id_idx').on(table.userId),
+    statusIdx: index('plans_status_idx').on(table.status),
+    startDateIdx: index('plans_start_date_idx').on(table.startDate),
+    userStatusIdx: index('plans_user_status_idx').on(table.userId, table.status),
+  })
+);
+
+// ============================================================================
+// DAILY TASKS TABLE - Individual actionable items for today checklist
+// ============================================================================
+
+export const dailyTasks = pgTable(
+  'daily_tasks',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    planId: integer('plan_id').references(() => plans.id, { onDelete: 'cascade' }),
+
+    // Task details
+    title: text('title').notNull(),
+    description: text('description'),
+    taskType: taskTypeEnum('task_type').notNull(),
+
+    // Scheduling
+    dueDate: timestamp('due_date', { withTimezone: true }).notNull(),
+    dueTime: varchar('due_time', { length: 8 }), // HH:MM:SS format (optional specific time)
+
+    // Status
+    status: taskStatusEnum('status').default('pending').notNull(),
+
+    // Completion
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    skippedAt: timestamp('skipped_at', { withTimezone: true }),
+    skipReason: text('skip_reason'),
+
+    // Task-specific metadata (flexible JSON for different task types)
+    metadata: jsonb('metadata').$type<{
+      // For workout tasks
+      exerciseName?: string;
+      sets?: number;
+      reps?: number;
+      weight?: number;
+      duration?: number; // minutes
+
+      // For supplement tasks
+      supplementName?: string;
+      dosage?: string;
+
+      // For meal tasks
+      mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+      targetCalories?: number;
+      targetProtein?: number;
+
+      // For hydration tasks
+      targetAmount?: number; // ml
+
+      // For cardio tasks
+      activityType?: string;
+      targetDuration?: number; // minutes
+      targetDistance?: number; // km
+
+      // For weight_log tasks
+      previousWeight?: number;
+
+      // For progress_photo tasks
+      photoType?: 'front' | 'side' | 'back';
+    }>(),
+
+    // Priority and ordering
+    priority: integer('priority').default(0).notNull(), // Higher = more important
+    order: integer('order').default(0).notNull(), // Display order within plan
+
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('daily_tasks_user_id_idx').on(table.userId),
+    planIdIdx: index('daily_tasks_plan_id_idx').on(table.planId),
+    taskTypeIdx: index('daily_tasks_task_type_idx').on(table.taskType),
+    statusIdx: index('daily_tasks_status_idx').on(table.status),
+    dueDateIdx: index('daily_tasks_due_date_idx').on(table.dueDate),
+    userDueDateIdx: index('daily_tasks_user_due_date_idx').on(table.userId, table.dueDate),
+    userStatusIdx: index('daily_tasks_user_status_idx').on(table.userId, table.status),
+    userTaskTypeIdx: index('daily_tasks_user_task_type_idx').on(table.userId, table.taskType),
+  })
+);
+
+// ============================================================================
+// EVIDENCE TABLE - Records of task completion
+// ============================================================================
+
+export const evidence = pgTable(
+  'evidence',
+  {
+    id: serial('id').primaryKey(),
+    taskId: integer('task_id')
+      .notNull()
+      .references(() => dailyTasks.id, { onDelete: 'cascade' }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    // Evidence details
+    evidenceType: evidenceTypeEnum('evidence_type').notNull(),
+
+    // Text log evidence
+    notes: text('notes'),
+
+    // Metrics evidence (for workouts, weight logs, etc.)
+    metrics: jsonb('metrics').$type<{
+      // Workout metrics
+      actualSets?: number;
+      actualReps?: number;
+      actualWeight?: number;
+      actualDuration?: number; // minutes
+
+      // Weight log metrics
+      weight?: number; // kg
+      bodyFat?: number; // percentage
+      muscleMass?: number; // kg
+
+      // Cardio metrics
+      distance?: number; // km
+      duration?: number; // minutes
+      avgHeartRate?: number;
+      caloriesBurned?: number;
+
+      // Meal metrics
+      actualCalories?: number;
+      actualProtein?: number;
+      actualCarbs?: number;
+      actualFat?: number;
+
+      // Hydration metrics
+      amount?: number; // ml
+
+      // Supplement metrics
+      taken?: boolean;
+      timeTaken?: string; // ISO timestamp
+    }>(),
+
+    // Photo evidence
+    photoUrl: text('photo_url'),
+    photoStorageKey: text('photo_storage_key'), // S3/storage reference
+
+    // Timing
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).defaultNow().notNull(),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    taskIdIdx: index('evidence_task_id_idx').on(table.taskId),
+    userIdIdx: index('evidence_user_id_idx').on(table.userId),
+    evidenceTypeIdx: index('evidence_type_idx').on(table.evidenceType),
+    recordedAtIdx: index('evidence_recorded_at_idx').on(table.recordedAt),
+  })
+);
+
+// ============================================================================
+// STREAKS TABLE - Track consecutive completion days
+// ============================================================================
+
+export const streaks = pgTable(
+  'streaks',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    // Streak type
+    streakType: streakTypeEnum('streak_type').notNull(),
+
+    // Streak data
+    currentStreak: integer('current_streak').default(0).notNull(), // consecutive days
+    longestStreak: integer('longest_streak').default(0).notNull(), // all-time best
+    totalCompletions: integer('total_completions').default(0).notNull(), // lifetime total
+
+    // Dates
+    lastCompletedDate: timestamp('last_completed_date', { withTimezone: true }),
+    streakStartDate: timestamp('streak_start_date', { withTimezone: true }),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('streaks_user_id_idx').on(table.userId),
+    streakTypeIdx: index('streaks_type_idx').on(table.streakType),
+    userTypeIdx: index('streaks_user_type_idx').on(table.userId, table.streakType),
+  })
+);
+
+// ============================================================================
+// RELATIONS
+// ============================================================================
+
+export const usersRelations = relations(users, ({ many, one }) => ({
+  tasks: many(tasks),
+  userSettings: one(userSettings),
+  partners: many(partners),
+  initialPlanSnapshot: one(initialPlanSnapshot),
+  plans: many(plans),
+  dailyTasks: many(dailyTasks),
+  evidence: many(evidence),
+  streaks: many(streaks),
+}));
+
+export const plansRelations = relations(plans, ({ one, many }) => ({
+  user: one(users, {
+    fields: [plans.userId],
+    references: [users.id],
+  }),
+  dailyTasks: many(dailyTasks),
+}));
+
+export const dailyTasksRelations = relations(dailyTasks, ({ one, many }) => ({
+  user: one(users, {
+    fields: [dailyTasks.userId],
+    references: [users.id],
+  }),
+  plan: one(plans, {
+    fields: [dailyTasks.planId],
+    references: [plans.id],
+  }),
+  evidence: many(evidence),
+}));
+
+export const evidenceRelations = relations(evidence, ({ one }) => ({
+  task: one(dailyTasks, {
+    fields: [evidence.taskId],
+    references: [dailyTasks.id],
+  }),
+  user: one(users, {
+    fields: [evidence.userId],
+    references: [users.id],
+  }),
+}));
+
+export const streaksRelations = relations(streaks, ({ one }) => ({
+  user: one(users, {
+    fields: [streaks.userId],
+    references: [users.id],
+  }),
+}));
+
+// ============================================================================
+// INFERRED TYPES FOR TYPE SAFETY
+// ============================================================================
+
+/**
+ * Inferred type for selecting a user from the database
+ * @example
+ * const user: SelectUser = await db.select().from(users).where(eq(users.id, 1));
+ */
+export type SelectUser = InferSelectModel<typeof users>;
+
+/**
+ * Inferred type for inserting a user into the database
+ * @example
+ * const newUser: InsertUser = { email: 'test@example.com', name: 'Test User' };
+ */
+export type InsertUser = InferInsertModel<typeof users>;
+
+/**
+ * Inferred type for selecting user settings
+ */
+export type SelectUserSettings = InferSelectModel<typeof userSettings>;
+
+/**
+ * Inferred type for inserting user settings
+ */
+export type InsertUserSettings = InferInsertModel<typeof userSettings>;
+
+/**
+ * Inferred type for selecting a partner
+ */
+export type SelectPartner = InferSelectModel<typeof partners>;
+
+/**
+ * Inferred type for inserting a partner
+ */
+export type InsertPartner = InferInsertModel<typeof partners>;
+
+/**
+ * Inferred type for selecting a plan
+ */
+export type SelectPlan = InferSelectModel<typeof plans>;
+
+/**
+ * Inferred type for inserting a plan
+ */
+export type InsertPlan = InferInsertModel<typeof plans>;
+
+/**
+ * Inferred type for selecting a daily task
+ */
+export type SelectDailyTask = InferSelectModel<typeof dailyTasks>;
+
+/**
+ * Inferred type for inserting a daily task
+ */
+export type InsertDailyTask = InferInsertModel<typeof dailyTasks>;
+
+/**
+ * Inferred type for selecting evidence
+ */
+export type SelectEvidence = InferSelectModel<typeof evidence>;
+
+/**
+ * Inferred type for inserting evidence
+ */
+export type InsertEvidence = InferInsertModel<typeof evidence>;
+
+/**
+ * Inferred type for selecting a streak
+ */
+export type SelectStreak = InferSelectModel<typeof streaks>;
+
+/**
+ * Inferred type for inserting a streak
+ */
+export type InsertStreak = InferInsertModel<typeof streaks>;
+
+/**
+ * Inferred type for selecting an initial plan snapshot
+ */
+export type SelectInitialPlanSnapshot = InferSelectModel<typeof initialPlanSnapshot>;
+
+/**
+ * Inferred type for inserting an initial plan snapshot
+ */
+export type InsertInitialPlanSnapshot = InferInsertModel<typeof initialPlanSnapshot>;

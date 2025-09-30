@@ -9,6 +9,7 @@ module.exports = {
     '!src/**/*.test.ts',
     '!src/**/*.spec.ts',
     '!src/index.ts',
+    '!src/test/**/*.ts',
   ],
   coverageThreshold: {
     global: {
@@ -20,4 +21,8 @@ module.exports = {
   },
   coverageDirectory: 'coverage',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  globalSetup: '<rootDir>/src/test/globalSetup.ts',
+  globalTeardown: '<rootDir>/src/test/globalTeardown.ts',
+  setupFilesAfterEnv: ['<rootDir>/src/test/setupAfterEnv.ts'],
+  testTimeout: 30000,
 };

@@ -8,6 +8,13 @@ Production-grade monorepo with Node.js API and React Native mobile app.
 - **apps/mobile** - React Native + TypeScript app with React Navigation and Zustand
 - **Monorepo** - pnpm workspaces with unified tooling
 
+## 📚 Documentation
+
+- **[QUICKSTART.md](./QUICKSTART.md)** - Get started in 5 minutes
+- **[SETUP.md](./SETUP.md)** - Detailed development setup guide
+- **[DATABASE.md](./DATABASE.md)** - Database migrations and schema management
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Production deployment strategies
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -19,21 +26,20 @@ Production-grade monorepo with Node.js API and React Native mobile app.
 ### Installation
 
 ```bash
-# Install dependencies
+# 1. Install dependencies
 pnpm install
 
-# Start infrastructure services
-docker compose up -d
+# 2. Start infrastructure services (PostgreSQL, Redis, MinIO, Jaeger)
+pnpm docker:up
 
-# Run database migrations
-pnpm db:migrate
+# 3. Setup database (automated script)
+pnpm db:setup
 
-# Seed database (idempotent)
-pnpm db:seed
-
-# Start API and Mobile in parallel
-pnpm run dev
+# 4. Start development
+pnpm dev
 ```
+
+For more detailed setup instructions, see [QUICKSTART.md](./QUICKSTART.md) or [SETUP.md](./SETUP.md).
 
 ## 📦 API Features
 
@@ -111,6 +117,9 @@ pnpm lint         # Lint code
 All packages enforce 80%+ code coverage:
 
 ```bash
+# Setup test database (first time only)
+pnpm db:test-setup
+
 # Run all tests
 pnpm test
 
@@ -118,11 +127,13 @@ pnpm test
 pnpm test:coverage
 
 # Run API tests only
-pnpm --filter @gtsd/api test
+pnpm test:api
 
 # Run mobile tests only
 pnpm --filter @gtsd/mobile test
 ```
+
+Tests use a separate `gtsd_test` database to avoid affecting development data.
 
 ## 🔍 Code Quality
 
@@ -240,20 +251,28 @@ GIT_SHA=local
 APP_VERSION=0.1.0
 ```
 
-## 🗄️ Database Migrations
+## 🗄️ Database Management
 
 Drizzle ORM with type-safe migrations:
 
 ```bash
-# Generate migration from schema changes
-cd apps/api && pnpm drizzle-kit generate
+# Setup database (automated)
+pnpm db:setup
 
-# Run migrations
+# Run migrations manually
 pnpm db:migrate
 
 # Seed database (safe to run multiple times)
 pnpm db:seed
+
+# Reset database (WARNING: deletes all data)
+pnpm db:reset
+
+# Setup test database
+pnpm db:test-setup
 ```
+
+For detailed database management, migration strategies, and best practices, see [DATABASE.md](./DATABASE.md).
 
 ## 📚 Project Structure
 

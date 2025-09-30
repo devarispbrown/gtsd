@@ -4,9 +4,11 @@ import { loggingMiddleware } from './middleware/logging';
 import { metricsMiddleware } from './middleware/metrics';
 import { authMiddleware } from './middleware/auth';
 import { errorHandler, notFoundHandler } from './middleware/error';
+import { apiLimiter } from './middleware/rateLimiter';
 import healthRouter from './routes/health';
 import metricsRouter from './routes/metrics';
 import onboardingRouter from './routes/onboarding';
+import tasksRouter from './routes/tasks';
 
 export const createApp = (): Application => {
   const app = express();
@@ -24,6 +26,9 @@ export const createApp = (): Application => {
   // Metrics middleware
   app.use(metricsMiddleware);
 
+  // Rate limiting (after logging, before auth)
+  app.use(apiLimiter);
+
   // Auth middleware (extracts userId from headers)
   app.use(authMiddleware);
 
@@ -33,6 +38,7 @@ export const createApp = (): Application => {
 
   // API v1 routes
   app.use('/v1', onboardingRouter);
+  app.use('/v1', tasksRouter);
 
   // Error handlers (must be last)
   app.use(notFoundHandler);
