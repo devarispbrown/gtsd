@@ -2,9 +2,11 @@ import express, { Application } from 'express';
 import { requestContextMiddleware } from './utils/request-context';
 import { loggingMiddleware } from './middleware/logging';
 import { metricsMiddleware } from './middleware/metrics';
+import { authMiddleware } from './middleware/auth';
 import { errorHandler, notFoundHandler } from './middleware/error';
 import healthRouter from './routes/health';
 import metricsRouter from './routes/metrics';
+import onboardingRouter from './routes/onboarding';
 
 export const createApp = (): Application => {
   const app = express();
@@ -22,12 +24,15 @@ export const createApp = (): Application => {
   // Metrics middleware
   app.use(metricsMiddleware);
 
+  // Auth middleware (extracts userId from headers)
+  app.use(authMiddleware);
+
   // Health and metrics routes (no auth needed)
   app.use(healthRouter);
   app.use(metricsRouter);
 
-  // API routes would go here
-  // app.use('/api', apiRouter);
+  // API v1 routes
+  app.use('/v1', onboardingRouter);
 
   // Error handlers (must be last)
   app.use(notFoundHandler);

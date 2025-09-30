@@ -8,6 +8,20 @@
       "when": 1759196874006,
       "tag": "0000_violet_salo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1759200282828,
+      "tag": "0001_robust_vertigo",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1759203488577,
+      "tag": "0002_fancy_toxin",
+      "breakpoints": true
     }
   ]
 }

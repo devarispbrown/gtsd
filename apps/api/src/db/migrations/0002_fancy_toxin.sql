@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS "partners_user_id_idx" ON "partners" USING btree ("user_id");

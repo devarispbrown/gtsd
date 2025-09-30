@@ -34,6 +34,10 @@ export const colors = {
     // Interactive states
     pressed: 'rgba(0, 122, 255, 0.1)',
     disabled: '#E5E5EA',
+
+    // Additional UI colors
+    inputBackground: '#F2F2F7',
+    primaryBackground: 'rgba(0, 122, 255, 0.1)',
   },
   dark: {
     // Primary colors
@@ -65,6 +69,10 @@ export const colors = {
     // Interactive states
     pressed: 'rgba(10, 132, 255, 0.2)',
     disabled: '#2C2C2E',
+
+    // Additional UI colors
+    inputBackground: '#1C1C1E',
+    primaryBackground: 'rgba(10, 132, 255, 0.2)',
   },
   // Priority colors that work on both themes
   priority: {
