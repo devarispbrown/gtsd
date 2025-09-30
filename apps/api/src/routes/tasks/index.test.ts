@@ -74,12 +74,12 @@ describe('Tasks Routes', () => {
       await db.delete(plans).where(eq(plans.userId, testUserId));
       await db.delete(users).where(eq(users.id, testUserId));
     }
-    tasksCache.flush();
+    await tasksCache.flush();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     // Clear cache after each test
-    tasksCache.flush();
+    await tasksCache.flush();
   });
 
   describe('GET /v1/tasks/today', () => {

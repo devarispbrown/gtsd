@@ -11,7 +11,7 @@ import {
   index,
   pgEnum,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, InferSelectModel, InferInsertModel } from 'drizzle-orm';
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -456,3 +456,91 @@ export const streaksRelations = relations(streaks, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// ============================================================================
+// INFERRED TYPES FOR TYPE SAFETY
+// ============================================================================
+
+/**
+ * Inferred type for selecting a user from the database
+ * @example
+ * const user: SelectUser = await db.select().from(users).where(eq(users.id, 1));
+ */
+export type SelectUser = InferSelectModel<typeof users>;
+
+/**
+ * Inferred type for inserting a user into the database
+ * @example
+ * const newUser: InsertUser = { email: 'test@example.com', name: 'Test User' };
+ */
+export type InsertUser = InferInsertModel<typeof users>;
+
+/**
+ * Inferred type for selecting user settings
+ */
+export type SelectUserSettings = InferSelectModel<typeof userSettings>;
+
+/**
+ * Inferred type for inserting user settings
+ */
+export type InsertUserSettings = InferInsertModel<typeof userSettings>;
+
+/**
+ * Inferred type for selecting a partner
+ */
+export type SelectPartner = InferSelectModel<typeof partners>;
+
+/**
+ * Inferred type for inserting a partner
+ */
+export type InsertPartner = InferInsertModel<typeof partners>;
+
+/**
+ * Inferred type for selecting a plan
+ */
+export type SelectPlan = InferSelectModel<typeof plans>;
+
+/**
+ * Inferred type for inserting a plan
+ */
+export type InsertPlan = InferInsertModel<typeof plans>;
+
+/**
+ * Inferred type for selecting a daily task
+ */
+export type SelectDailyTask = InferSelectModel<typeof dailyTasks>;
+
+/**
+ * Inferred type for inserting a daily task
+ */
+export type InsertDailyTask = InferInsertModel<typeof dailyTasks>;
+
+/**
+ * Inferred type for selecting evidence
+ */
+export type SelectEvidence = InferSelectModel<typeof evidence>;
+
+/**
+ * Inferred type for inserting evidence
+ */
+export type InsertEvidence = InferInsertModel<typeof evidence>;
+
+/**
+ * Inferred type for selecting a streak
+ */
+export type SelectStreak = InferSelectModel<typeof streaks>;
+
+/**
+ * Inferred type for inserting a streak
+ */
+export type InsertStreak = InferInsertModel<typeof streaks>;
+
+/**
+ * Inferred type for selecting an initial plan snapshot
+ */
+export type SelectInitialPlanSnapshot = InferSelectModel<typeof initialPlanSnapshot>;
+
+/**
+ * Inferred type for inserting an initial plan snapshot
+ */
+export type InsertInitialPlanSnapshot = InferInsertModel<typeof initialPlanSnapshot>;

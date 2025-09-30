@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { logger } from '../../config/logger';
 import { AppError } from '../../middleware/error';
+import { requireAuth } from '../../middleware/auth';
 import {
   getTodayTasksQuerySchema,
   createEvidenceSchema,
@@ -32,15 +33,13 @@ const tracer = trace.getTracer('tasks-routes');
  */
 router.get(
   '/tasks/today',
+  requireAuth,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const span = tracer.startSpan('GET /v1/tasks/today');
     const startTime = Date.now();
 
     try {
-      // Check authentication
-      if (!req.userId) {
-        throw new AppError(401, 'Authentication required');
-      }
+      // userId is guaranteed to be present due to requireAuth middleware
 
       span.setAttributes({
         'user.id': req.userId,
@@ -73,8 +72,9 @@ router.get(
       );
 
       // Check cache first
-      const cachedResult = tasksCache.getTodayTasks(
-        req.userId,
+      // userId is guaranteed to be present due to requireAuth middleware
+      const cachedResult = await tasksCache.getTodayTasks(
+        req.userId!,
         targetDate,
         queryParams.limit,
         queryParams.offset,
@@ -101,8 +101,9 @@ router.get(
       span.addEvent('cache_miss');
 
       // Fetch from database
+      // userId is guaranteed to be present due to requireAuth middleware
       const result = await tasksService.getTodayTasks(
-        req.userId,
+        req.userId!,
         targetDate,
         queryParams.limit,
         queryParams.offset,
@@ -111,8 +112,9 @@ router.get(
       );
 
       // Cache the result
-      tasksCache.setTodayTasks(
-        req.userId,
+      // userId is guaranteed to be present due to requireAuth middleware
+      await tasksCache.setTodayTasks(
+        req.userId!,
         targetDate,
         queryParams.limit,
         queryParams.offset,
@@ -179,9 +181,15 @@ router.get(
         span.recordException(error);
         next(error);
       } else {
-        logger.error({ userId: req.userId, error }, 'Unexpected error fetching tasks');
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error(
+          { userId: req.userId, error, errorMessage },
+          'Unexpected error fetching tasks'
+        );
         span.recordException(error as Error);
-        next(new AppError(500, 'Failed to fetch tasks'));
+        next(
+          new AppError(500, `Failed to fetch tasks for user ${req.userId}: ${errorMessage}`)
+        );
       }
     } finally {
       span.end();
@@ -204,14 +212,11 @@ router.get(
  * - Updates user streak
  * - Invalidates task cache
  */
-router.post('/evidence', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/evidence', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const span = tracer.startSpan('POST /v1/evidence');
 
   try {
-    // Check authentication
-    if (!req.userId) {
-      throw new AppError(401, 'Authentication required');
-    }
+    // userId is guaranteed to be present due to requireAuth middleware
 
     span.setAttributes({
       'user.id': req.userId,
@@ -235,10 +240,11 @@ router.post('/evidence', async (req: Request, res: Response, next: NextFunction)
     span.addEvent('validation_completed');
 
     // Create evidence
-    const result = await tasksService.createEvidence(req.userId, validatedInput);
+    // userId is guaranteed to be present due to requireAuth middleware
+    const result = await tasksService.createEvidence(req.userId!, validatedInput);
 
     // Invalidate cache for this user
-    tasksCache.invalidateUserTasks(req.userId);
+    await tasksCache.invalidateUserTasks(req.userId!);
 
     span.addEvent('evidence_created');
     span.addEvent('cache_invalidated');
@@ -290,9 +296,15 @@ router.post('/evidence', async (req: Request, res: Response, next: NextFunction)
       span.recordException(error);
       next(error);
     } else {
-      logger.error({ userId: req.userId, error }, 'Unexpected error creating evidence');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(
+        { userId: req.userId, error, errorMessage },
+        'Unexpected error creating evidence'
+      );
       span.recordException(error as Error);
-      next(new AppError(500, 'Failed to create evidence'));
+      next(
+        new AppError(500, `Failed to create evidence for user ${req.userId}: ${errorMessage}`)
+      );
     }
   } finally {
     span.end();

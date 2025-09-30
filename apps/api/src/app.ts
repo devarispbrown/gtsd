@@ -4,6 +4,7 @@ import { loggingMiddleware } from './middleware/logging';
 import { metricsMiddleware } from './middleware/metrics';
 import { authMiddleware } from './middleware/auth';
 import { errorHandler, notFoundHandler } from './middleware/error';
+import { apiLimiter } from './middleware/rateLimiter';
 import healthRouter from './routes/health';
 import metricsRouter from './routes/metrics';
 import onboardingRouter from './routes/onboarding';
@@ -24,6 +25,9 @@ export const createApp = (): Application => {
 
   // Metrics middleware
   app.use(metricsMiddleware);
+
+  // Rate limiting (after logging, before auth)
+  app.use(apiLimiter);
 
   // Auth middleware (extracts userId from headers)
   app.use(authMiddleware);

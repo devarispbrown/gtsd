@@ -1,14 +1,42 @@
 import { db } from '../../db/connection';
-import { dailyTasks, evidence, streaks } from '../../db/schema';
-import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
+import {
+  dailyTasks,
+  evidence,
+  streaks,
+  SelectEvidence,
+  SelectStreak,
+} from '../../db/schema';
+import { eq, and, gte, lte, desc, sql, inArray } from 'drizzle-orm';
+import type { ExtractTablesWithRelations } from 'drizzle-orm';
+import type { PgTransaction } from 'drizzle-orm/pg-core';
+import type { PostgresJsQueryResultHKT } from 'drizzle-orm/postgres-js';
 import { AppError } from '../../middleware/error';
 import { logger } from '../../config/logger';
 import { startOfDay, endOfDay, subDays } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import type { CreateEvidenceInput, TaskType } from './schemas';
+import DOMPurify from 'isomorphic-dompurify';
+import { z } from 'zod';
+import * as schema from '../../db/schema';
 
 /**
- * Task with optional evidence
+ * Evidence item with properly typed fields
+ * Represents a single piece of evidence attached to a task
+ */
+export interface EvidenceItem {
+  id: number;
+  type: string;
+  notes: string | null;
+  metrics: Record<string, unknown> | null;
+  photoUrl: string | null;
+  photoStorageKey: string | null;
+  recordedAt: Date;
+  createdAt: Date;
+}
+
+/**
+ * Task with optional evidence array
+ * Represents a complete task with all associated evidence
  */
 export interface TaskWithEvidence {
   id: number;
@@ -19,24 +47,35 @@ export interface TaskWithEvidence {
   dueDate: Date;
   status: string;
   completedAt: Date | null;
-  priority: number | null;
+  priority: number;
   estimatedDuration: number | null;
-  evidence: Array<{
-    id: number;
-    type: string;
-    notes: string | null;
-    metrics: Record<string, unknown> | null;
-    photoUrl: string | null;
-    photoStorageKey: string | null;
-    recordedAt: Date;
-    createdAt: Date;
-  }>;
+  evidence: EvidenceItem[];
   createdAt: Date;
   updatedAt: Date;
 }
 
 /**
- * Grouped tasks response
+ * Streak summary for user
+ */
+export interface StreakSummary {
+  current: number;
+  longest: number;
+  totalDays: number;
+}
+
+/**
+ * Pagination metadata
+ */
+export interface PaginationMeta {
+  limit: number;
+  offset: number;
+  total: number;
+  hasMore: boolean;
+}
+
+/**
+ * Grouped tasks response for GET /v1/tasks/today
+ * Contains all tasks for a date, grouped by type with streak and pagination info
  */
 export interface GroupedTasks {
   date: string;
@@ -44,36 +83,61 @@ export interface GroupedTasks {
   completedTasks: number;
   completionPercentage: number;
   tasksByType: Record<string, TaskWithEvidence[]>;
-  streak: {
-    current: number;
-    longest: number;
-    totalDays: number;
-  };
-  pagination: {
-    limit: number;
-    offset: number;
-    total: number;
-    hasMore: boolean;
-  };
+  streak: StreakSummary;
+  pagination: PaginationMeta;
 }
 
 /**
- * Evidence creation result
+ * Evidence creation result for POST /v1/evidence
+ * Contains the updated task, new evidence, and streak information
  */
 export interface EvidenceResult {
   task: TaskWithEvidence;
-  evidence: {
-    id: number;
-    type: string;
-    notes: string | null;
-    metrics: Record<string, unknown> | null;
-    photoUrl: string | null;
-    photoStorageKey: string | null;
-    recordedAt: Date;
-    createdAt: Date;
-  };
+  evidence: EvidenceItem;
   streakUpdated: boolean;
   newStreak: number;
+}
+
+/**
+ * Transaction type for database operations
+ */
+type DbTransaction = PgTransaction<
+  PostgresJsQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;
+
+/**
+ * Schema for validating JSONB evidence metrics
+ * Ensures metrics are a record of string keys to unknown values
+ */
+const evidenceMetricsSchema = z.record(z.string(), z.unknown()).nullable();
+
+/**
+ * Sanitize text input to prevent XSS attacks
+ * Strips all HTML tags and limits length
+ */
+function sanitizeText(text: string, maxLength = 2000): string {
+  const sanitized = DOMPurify.sanitize(text, {
+    ALLOWED_TAGS: [], // Strip all HTML
+    ALLOWED_ATTR: [], // Strip all attributes
+  });
+  return sanitized.substring(0, maxLength).trim();
+}
+
+/**
+ * Safely parse and validate JSONB metrics field
+ * Returns validated metrics or null if invalid
+ */
+function validateMetrics(
+  metrics: unknown
+): Record<string, unknown> | null {
+  try {
+    return evidenceMetricsSchema.parse(metrics);
+  } catch (error) {
+    logger.warn({ metrics, error }, 'Invalid metrics data in JSONB field');
+    return null;
+  }
 }
 
 export class TasksService {
@@ -94,6 +158,8 @@ export class TasksService {
     typeFilter?: TaskType,
     userTimezone = 'UTC'
   ): Promise<GroupedTasks> {
+    const startTime = Date.now();
+
     // Parse date in user's timezone
     const targetDate = new Date(dateString + 'T00:00:00');
     const dayStart = startOfDay(toZonedTime(targetDate, userTimezone));
@@ -115,7 +181,7 @@ export class TasksService {
       conditions.push(eq(dailyTasks.taskType, typeFilter));
     }
 
-    // Get total count for pagination (separate query for accuracy)
+    // 1. Get total count (unchanged)
     const [countResult] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(dailyTasks)
@@ -123,10 +189,9 @@ export class TasksService {
 
     const total = countResult?.count || 0;
 
-    // Fetch tasks with left join to evidence
-    const tasksWithEvidence = await db
+    // 2. Fetch tasks WITHOUT evidence (correct pagination)
+    const tasks = await db
       .select({
-        // Task fields
         id: dailyTasks.id,
         userId: dailyTasks.userId,
         type: dailyTasks.taskType,
@@ -139,67 +204,64 @@ export class TasksService {
         estimatedDuration: dailyTasks.metadata,
         createdAt: dailyTasks.createdAt,
         updatedAt: dailyTasks.updatedAt,
-        // Evidence fields (may be null)
-        evidenceId: evidence.id,
-        evidenceType: evidence.evidenceType,
-        evidenceNotes: evidence.notes,
-        evidenceMetrics: evidence.metrics,
-        evidencePhotoUrl: evidence.photoUrl,
-        evidencePhotoStorageKey: evidence.photoStorageKey,
-        evidenceRecordedAt: evidence.recordedAt,
-        evidenceCreatedAt: evidence.createdAt,
       })
       .from(dailyTasks)
-      .leftJoin(evidence, eq(evidence.taskId, dailyTasks.id))
       .where(and(...conditions))
       .orderBy(desc(dailyTasks.priority), dailyTasks.createdAt)
       .limit(limit)
       .offset(offset);
 
-    // Group evidence by task
-    const tasksMap = new Map<number, TaskWithEvidence>();
-
-    for (const row of tasksWithEvidence) {
-      if (!tasksMap.has(row.id)) {
-        tasksMap.set(row.id, {
-          id: row.id,
-          userId: row.userId,
-          type: row.type,
-          title: row.title,
-          description: row.description,
-          dueDate: row.dueDate,
-          status: row.status,
-          completedAt: row.completedAt,
-          priority: row.priority,
-          estimatedDuration: null, // Extract from metadata if needed
-          evidence: [],
-          createdAt: row.createdAt,
-          updatedAt: row.updatedAt,
-        });
-      }
-
-      // Add evidence if present
-      if (row.evidenceId) {
-        tasksMap.get(row.id)!.evidence.push({
-          id: row.evidenceId,
-          type: row.evidenceType!,
-          notes: row.evidenceNotes,
-          metrics: row.evidenceMetrics as Record<string, unknown> | null,
-          photoUrl: row.evidencePhotoUrl,
-          photoStorageKey: row.evidencePhotoStorageKey,
-          recordedAt: row.evidenceRecordedAt!,
-          createdAt: row.evidenceCreatedAt!,
-        });
-      }
+    // 3. Fetch evidence for these tasks (if any)
+    let evidenceList: SelectEvidence[] = [];
+    if (tasks.length > 0) {
+      const taskIds = tasks.map((t) => t.id);
+      evidenceList = await db
+        .select()
+        .from(evidence)
+        .where(inArray(evidence.taskId, taskIds))
+        .orderBy(evidence.createdAt);
     }
 
-    const tasks = Array.from(tasksMap.values());
+    // 4. Group evidence by task ID
+    const evidenceByTaskId = new Map<number, EvidenceItem[]>();
+    for (const ev of evidenceList) {
+      if (!evidenceByTaskId.has(ev.taskId)) {
+        evidenceByTaskId.set(ev.taskId, []);
+      }
+      evidenceByTaskId.get(ev.taskId)!.push({
+        id: ev.id,
+        type: ev.evidenceType,
+        notes: ev.notes,
+        metrics: validateMetrics(ev.metrics),
+        photoUrl: ev.photoUrl,
+        photoStorageKey: ev.photoStorageKey,
+        recordedAt: ev.recordedAt,
+        createdAt: ev.createdAt,
+      });
+    }
 
-    // Group by type
+    // 5. Build TaskWithEvidence objects
+    const tasksWithEvidence: TaskWithEvidence[] = tasks.map((task) => ({
+      id: task.id,
+      userId: task.userId,
+      type: task.type,
+      title: task.title,
+      description: task.description,
+      dueDate: task.dueDate,
+      status: task.status,
+      completedAt: task.completedAt,
+      priority: task.priority || 0,
+      estimatedDuration: null,
+      evidence: evidenceByTaskId.get(task.id) || [],
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+    }));
+
+    // 6. Group by type
     const tasksByType: Record<string, TaskWithEvidence[]> = {};
     let completedCount = 0;
 
-    for (const task of tasks) {
+    for (const task of tasksWithEvidence) {
       if (!tasksByType[task.type]) {
         tasksByType[task.type] = [];
       }
@@ -210,8 +272,25 @@ export class TasksService {
       }
     }
 
-    // Get user streak (overall streak)
+    // 7. Get user streak (unchanged)
     const streak = await this.getUserStreak(userId);
+
+    const duration = Date.now() - startTime;
+    logger.info(
+      {
+        userId,
+        duration,
+        taskCount: tasks.length,
+        evidenceCount: evidenceList.length,
+        total,
+      },
+      'getTodayTasks query completed'
+    );
+
+    // Warn if exceeds p95 target
+    if (duration > 300) {
+      logger.warn({ userId, duration, target: 300 }, 'Query exceeded p95 target of 300ms');
+    }
 
     return {
       date: dateString,
@@ -245,7 +324,7 @@ export class TasksService {
       .limit(1);
 
     if (!task) {
-      throw new AppError(404, 'Task not found or does not belong to user');
+      throw new AppError(404, `Task ${input.taskId} not found for user ${userId}`);
     }
 
     // Check if task is already completed
@@ -272,12 +351,13 @@ export class TasksService {
         taskId: input.taskId,
         userId,
         evidenceType: input.type,
-        notes: input.notes || null,
+        notes: input.notes ? sanitizeText(input.notes) : null,
       };
 
-      // Add type-specific data
+      // Add type-specific data with sanitization
       if (input.type === 'text_log' && 'text' in input.data) {
-        evidenceValues.notes = input.data.text;
+        // Sanitize text input to prevent XSS attacks
+        evidenceValues.notes = sanitizeText(input.data.text);
       } else if (input.type === 'metrics' && 'metrics' in input.data) {
         evidenceValues.metrics = input.data.metrics;
       } else if (input.type === 'photo_reference' && 'photoUrl' in input.data) {
@@ -323,7 +403,7 @@ export class TasksService {
         id: result.newEvidence.id,
         type: result.newEvidence.evidenceType,
         notes: result.newEvidence.notes,
-        metrics: result.newEvidence.metrics as Record<string, unknown> | null,
+        metrics: validateMetrics(result.newEvidence.metrics),
         photoUrl: result.newEvidence.photoUrl,
         photoStorageKey: result.newEvidence.photoStorageKey,
         recordedAt: result.newEvidence.recordedAt,
@@ -338,7 +418,8 @@ export class TasksService {
    * Get a single task by ID with evidence
    */
   private async getTaskById(userId: number, taskId: number): Promise<TaskWithEvidence> {
-    const taskRows = await db
+    // 1. Fetch task
+    const [task] = await db
       .select({
         id: dailyTasks.id,
         userId: dailyTasks.userId,
@@ -352,64 +433,58 @@ export class TasksService {
         estimatedDuration: dailyTasks.metadata,
         createdAt: dailyTasks.createdAt,
         updatedAt: dailyTasks.updatedAt,
-        evidenceId: evidence.id,
-        evidenceType: evidence.evidenceType,
-        evidenceNotes: evidence.notes,
-        evidenceMetrics: evidence.metrics,
-        evidencePhotoUrl: evidence.photoUrl,
-        evidencePhotoStorageKey: evidence.photoStorageKey,
-        evidenceRecordedAt: evidence.recordedAt,
-        evidenceCreatedAt: evidence.createdAt,
       })
       .from(dailyTasks)
-      .leftJoin(evidence, eq(evidence.taskId, dailyTasks.id))
       .where(and(eq(dailyTasks.id, taskId), eq(dailyTasks.userId, userId)))
-      .limit(10); // Max evidence per task
+      .limit(1);
 
-    if (taskRows.length === 0) {
-      throw new AppError(404, 'Task not found');
+    if (!task) {
+      throw new AppError(404, `Task ${taskId} not found for user ${userId}`);
     }
 
-    const firstRow = taskRows[0];
-    const task: TaskWithEvidence = {
-      id: firstRow.id,
-      userId: firstRow.userId,
-      type: firstRow.type,
-      title: firstRow.title,
-      description: firstRow.description,
-      dueDate: firstRow.dueDate,
-      status: firstRow.status,
-      completedAt: firstRow.completedAt,
-      priority: firstRow.priority,
+    // 2. Fetch evidence for this task
+    const evidenceList = await db
+      .select()
+      .from(evidence)
+      .where(eq(evidence.taskId, taskId))
+      .orderBy(evidence.createdAt)
+      .limit(10); // Max 10 evidence items
+
+    // 3. Map evidence with validated metrics
+    const evidenceItems: EvidenceItem[] = evidenceList.map((ev) => ({
+      id: ev.id,
+      type: ev.evidenceType,
+      notes: ev.notes,
+      metrics: validateMetrics(ev.metrics),
+      photoUrl: ev.photoUrl,
+      photoStorageKey: ev.photoStorageKey,
+      recordedAt: ev.recordedAt,
+      createdAt: ev.createdAt,
+    }));
+
+    return {
+      id: task.id,
+      userId: task.userId,
+      type: task.type,
+      title: task.title,
+      description: task.description,
+      dueDate: task.dueDate,
+      status: task.status,
+      completedAt: task.completedAt,
+      priority: task.priority || 0,
       estimatedDuration: null,
-      evidence: [],
-      createdAt: firstRow.createdAt,
-      updatedAt: firstRow.updatedAt,
+      evidence: evidenceItems,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
     };
-
-    // Add all evidence
-    for (const row of taskRows) {
-      if (row.evidenceId) {
-        task.evidence.push({
-          id: row.evidenceId,
-          type: row.evidenceType!,
-          notes: row.evidenceNotes,
-          metrics: row.evidenceMetrics as Record<string, unknown> | null,
-          photoUrl: row.evidencePhotoUrl,
-          photoStorageKey: row.evidencePhotoStorageKey,
-          recordedAt: row.evidenceRecordedAt!,
-          createdAt: row.evidenceCreatedAt!,
-        });
-      }
-    }
-
-    return task;
   }
 
   /**
    * Get user's current streak (overall streak)
+   * @param userId - User ID to fetch streak for
+   * @returns Streak record (creates one if doesn't exist)
    */
-  private async getUserStreak(userId: number) {
+  private async getUserStreak(userId: number): Promise<SelectStreak> {
     const [streak] = await db
       .select()
       .from(streaks)
@@ -437,13 +512,11 @@ export class TasksService {
 
   /**
    * Update user streak after task completion
-   * @param tx - Database transaction
-   * @param userId - User ID
+   * @param tx - Database transaction instance
+   * @param userId - User ID to update streak for
+   * @returns Updated streak record
    */
-  private async updateUserStreak(
-    tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-    userId: number
-  ) {
+  private async updateUserStreak(tx: DbTransaction, userId: number): Promise<SelectStreak> {
     const [existingStreak] = await tx
       .select()
       .from(streaks)
@@ -488,16 +561,17 @@ export class TasksService {
       (lastCompletion.getTime() === yesterday.getTime() ||
         lastCompletion.getTime() === today.getTime());
 
-    const newCurrentStreak = streakContinues ? existingStreak.currentStreak + 1 : 1;
-
-    const newLongestStreak = Math.max(newCurrentStreak, existingStreak.longestStreak);
-
+    // Use SQL-level atomic operations to prevent race conditions during concurrent updates
     const [updatedStreak] = await tx
       .update(streaks)
       .set({
-        currentStreak: newCurrentStreak,
-        longestStreak: newLongestStreak,
-        totalCompletions: existingStreak.totalCompletions + 1,
+        currentStreak: streakContinues
+          ? sql`current_streak + 1`
+          : sql`1`,
+        longestStreak: streakContinues
+          ? sql`GREATEST(current_streak + 1, longest_streak)`
+          : sql`GREATEST(1, longest_streak)`,
+        totalCompletions: sql`total_completions + 1`,
         lastCompletedDate: today,
         updatedAt: now,
       })
@@ -507,8 +581,8 @@ export class TasksService {
     logger.info(
       {
         userId,
-        currentStreak: newCurrentStreak,
-        longestStreak: newLongestStreak,
+        currentStreak: updatedStreak.currentStreak,
+        longestStreak: updatedStreak.longestStreak,
         streakContinued: streakContinues,
       },
       'Updated user streak'

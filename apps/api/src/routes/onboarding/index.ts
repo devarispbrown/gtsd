@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { logger } from '../../config/logger';
 import { AppError } from '../../middleware/error';
+import { requireAuth } from '../../middleware/auth';
 import { onboardingSchema } from './schemas';
 import { OnboardingService, type OnboardingResult } from './service';
 import { ZodError } from 'zod';
@@ -16,14 +17,12 @@ const tracer = trace.getTracer('onboarding-routes');
  */
 router.post(
   '/onboarding',
+  requireAuth,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const span = tracer.startSpan('POST /v1/onboarding');
 
     try {
-      // Check authentication
-      if (!req.userId) {
-        throw new AppError(401, 'Authentication required');
-      }
+      // userId is guaranteed to be present due to requireAuth middleware
 
       span.setAttributes({
         'user.id': req.userId,
@@ -42,8 +41,9 @@ router.post(
       span.addEvent('validation_completed');
 
       // Call service to complete onboarding
+      // userId is guaranteed to be present due to requireAuth middleware
       const result: OnboardingResult = await onboardingService.completeOnboarding(
-        req.userId,
+        req.userId!,
         validatedInput
       );
 
@@ -86,12 +86,15 @@ router.post(
         span.recordException(error);
         next(error);
       } else {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         logger.error(
-          { userId: req.userId, error },
+          { userId: req.userId, error, errorMessage },
           'Unexpected error during onboarding'
         );
         span.recordException(error as Error);
-        next(new AppError(500, 'Failed to complete onboarding'));
+        next(
+          new AppError(500, `Failed to complete onboarding for user ${req.userId}: ${errorMessage}`)
+        );
       }
     } finally {
       span.end();
@@ -105,14 +108,12 @@ router.post(
  */
 router.get(
   '/summary/how-it-works',
+  requireAuth,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const span = tracer.startSpan('GET /v1/summary/how-it-works');
 
     try {
-      // Check authentication
-      if (!req.userId) {
-        throw new AppError(401, 'Authentication required');
-      }
+      // userId is guaranteed to be present due to requireAuth middleware
 
       span.setAttributes({
         'user.id': req.userId,
@@ -126,7 +127,8 @@ router.get(
       );
 
       // Call service to get summary
-      const summary = await onboardingService.getHowItWorksSummary(req.userId);
+      // userId is guaranteed to be present due to requireAuth middleware
+      const summary = await onboardingService.getHowItWorksSummary(req.userId!);
 
       span.addEvent('summary_retrieved');
       span.setStatus({ code: SpanStatusCode.OK });
@@ -162,12 +164,15 @@ router.get(
         span.recordException(error);
         next(error);
       } else {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         logger.error(
-          { userId: req.userId, error },
+          { userId: req.userId, error, errorMessage },
           'Unexpected error fetching summary'
         );
         span.recordException(error as Error);
-        next(new AppError(500, 'Failed to retrieve summary'));
+        next(
+          new AppError(500, `Failed to retrieve summary for user ${req.userId}: ${errorMessage}`)
+        );
       }
     } finally {
       span.end();

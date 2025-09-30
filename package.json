@@ -9,13 +9,22 @@
   },
   "scripts": {
     "dev": "concurrently -n api,mobile \"pnpm --filter @gtsd/api dev\" \"pnpm --filter @gtsd/mobile start\"",
+    "dev:api": "pnpm --filter @gtsd/api dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
+    "test:api": "pnpm --filter @gtsd/api test",
+    "test:coverage": "pnpm -r test:coverage",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "typecheck": "pnpm -r typecheck",
     "db:migrate": "pnpm --filter @gtsd/api db:migrate",
     "db:seed": "pnpm --filter @gtsd/api db:seed",
+    "db:setup": "./scripts/db-setup.sh",
+    "db:test-setup": "./scripts/db-test-setup.sh",
+    "db:reset": "./scripts/db-reset.sh",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
     "prepare": "husky"
   },
   "devDependencies": {
