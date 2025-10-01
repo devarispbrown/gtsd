@@ -12,12 +12,15 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRoute, useFocusEffect } from '@react-navigation/native';
 import Animated, {
   FadeInDown,
   FadeInUp,
   useAnimatedStyle,
   withSpring,
   useSharedValue,
+  withSequence,
+  withTiming,
 } from 'react-native-reanimated';
 import HapticFeedback from 'react-native-haptic-feedback';
 import { useTodayStore } from '../../stores/todayStore';
@@ -27,8 +30,10 @@ import { CompletionProgress } from '../../components/today/CompletionProgress';
 import { TaskDetailModal } from './TaskDetailModal';
 import { colors } from '../../constants/colors';
 import { TaskType, TASK_TYPE_COLORS } from '../../types/tasks';
+import type { TodayScreenProps } from '../../types/navigation';
 
 export const TodayScreen: React.FC = () => {
+  const route = useRoute<TodayScreenProps['route']>();
   const isDarkMode = useColorScheme() === 'dark';
   const theme = isDarkMode ? colors.dark : colors.light;
   const scrollViewRef = useRef<ScrollView>(null);
@@ -53,15 +58,78 @@ export const TodayScreen: React.FC = () => {
 
   // Local state
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate] = useState(new Date());
+  const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
+  const [highlightedTaskId, setHighlightedTaskId] = useState<number | null>(null);
 
   // Animation values
   const progressScale = useSharedValue(1);
+  const highlightOpacity = useSharedValue(0);
 
   // Initial data fetch
   useEffect(() => {
     fetchTodayTasks();
-  }, []);
+  }, [fetchTodayTasks]);
+
+  // Handle deep link parameters
+  useFocusEffect(
+    useCallback(() => {
+      if (route.params && !hasHandledDeepLink) {
+        const { reminder, scrollToTask } = route.params;
+
+        // Handle reminder parameter
+        if (reminder === 'pending') {
+          // Find first incomplete task
+          const firstIncompleteTask = taskGroups
+            .flatMap((group) => group.tasks)
+            .find((task) => !task.completed);
+
+          if (firstIncompleteTask) {
+            setHighlightedTaskId(firstIncompleteTask.id);
+
+            // Show notification about pending tasks
+            setTimeout(() => {
+              Alert.alert(
+                'Pending Tasks',
+                'You have pending tasks to complete today.',
+                [{ text: 'OK', onPress: () => {} }],
+                { cancelable: true }
+              );
+            }, 500);
+
+            // Animate highlight
+            highlightOpacity.value = withSequence(
+              withTiming(1, { duration: 300 }),
+              withTiming(0.5, { duration: 300 }),
+              withTiming(1, { duration: 300 }),
+              withTiming(0, { duration: 500 })
+            );
+
+            // Scroll to task after a short delay
+            if (scrollToTask) {
+              setTimeout(() => {
+                scrollViewRef.current?.scrollTo({ y: 200, animated: true });
+              }, 300);
+            }
+          }
+        } else if (reminder === 'overdue') {
+          Alert.alert(
+            'Overdue Tasks',
+            'You have overdue tasks that need attention.',
+            [{ text: 'OK', onPress: () => {} }],
+            { cancelable: true }
+          );
+        }
+
+        setHasHandledDeepLink(true);
+      }
+    }, [route.params, hasHandledDeepLink, taskGroups, highlightOpacity])
+  );
+
+  // Reset deep link handled flag when params change
+  useEffect(() => {
+    setHasHandledDeepLink(false);
+  }, [route.params]);
 
   // Handle error display
   useEffect(() => {
@@ -86,7 +154,7 @@ export const TodayScreen: React.FC = () => {
         { cancelable: true }
       );
     }
-  }, [error]);
+  }, [error, clearError, fetchTodayTasks]);
 
   // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {
@@ -362,7 +430,7 @@ export const TodayScreen: React.FC = () => {
             </Text>
             <Text style={styles.emptyDescription}>
               {filterType
-                ? `You don't have any ${filterType} tasks scheduled.`
+                ? `You don&apos;t have any ${filterType} tasks scheduled.`
                 : 'Take a rest day or check back tomorrow!'}
             </Text>
           </Animated.View>

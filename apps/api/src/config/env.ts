@@ -20,6 +20,10 @@ const envSchema = z.object({
   OTEL_SERVICE_NAME: z.string().default('gtsd-api'),
   GIT_SHA: z.string().default('unknown'),
   APP_VERSION: z.string().default('0.0.0'),
+  // Twilio SMS configuration
+  TWILIO_ACCOUNT_SID: z.string().default(isTest ? 'test_account_sid' : ''),
+  TWILIO_AUTH_TOKEN: z.string().default(isTest ? 'test_auth_token' : ''),
+  TWILIO_PHONE_NUMBER: z.string().default(isTest ? '+15551234567' : ''),
 });
 
 export type Env = z.infer<typeof envSchema>;

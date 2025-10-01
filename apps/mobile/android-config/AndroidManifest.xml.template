@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Add these entries to your AndroidManifest.xml for deep linking support -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- Main Activity with deep link intent filters -->
+        <activity
+            android:name=".MainActivity"
+            android:launchMode="singleTask">
+
+            <!-- Custom URL Scheme -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- Handle gtsd:// URLs -->
+                <data android:scheme="gtsd" />
+            </intent-filter>
+
+            <!-- App Links (Universal Links) - Optional -->
+            <!-- Configure this if you have a verified domain -->
+            <!--
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="https"
+                      android:host="gtsd.app" />
+                <data android:scheme="https"
+                      android:host="www.gtsd.app" />
+            </intent-filter>
+            -->
+
+            <!-- Specific path patterns -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="gtsd"
+                      android:host="today" />
+                <data android:scheme="gtsd"
+                      android:host="task" />
+                <data android:scheme="gtsd"
+                      android:host="settings" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

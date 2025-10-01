@@ -9,10 +9,23 @@ const connection = {
 
 export const emailQueue = new Queue('email', { connection });
 
+/**
+ * SMS queue for processing SMS notification jobs
+ */
+export const smsQueue = new Queue('sms', { connection });
+
+/**
+ * Job data structure for SMS jobs
+ */
+export interface SmsJobData {
+  userId: number;
+  messageType: 'morning_nudge' | 'evening_reminder';
+}
+
 export const createEmailWorker = () => {
   const worker = new Worker(
     'email',
-    async (job) => {
+    async (job: { id: string | number; data: Record<string, unknown> }) => {
       logger.info({ jobId: job.id, data: job.data }, 'Processing email job');
 
       // Simulate email sending
@@ -24,11 +37,11 @@ export const createEmailWorker = () => {
     { connection }
   );
 
-  worker.on('completed', (job) => {
+  worker.on('completed', (job: { id: string | number }) => {
     logger.info({ jobId: job.id }, 'Job completed');
   });
 
-  worker.on('failed', (job, err) => {
+  worker.on('failed', (job: { id: string | number } | undefined, err: Error) => {
     logger.error({ jobId: job?.id, err }, 'Job failed');
   });
 
@@ -37,5 +50,6 @@ export const createEmailWorker = () => {
 
 export const closeQueues = async () => {
   await emailQueue.close();
+  await smsQueue.close();
   logger.info('Queues closed');
 };

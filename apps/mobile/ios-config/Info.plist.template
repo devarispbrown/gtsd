@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Add these entries to your Info.plist for deep linking support -->
+
+    <!-- URL Scheme Configuration -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>gtsd</string>
+            </array>
+            <key>CFBundleURLName</key>
+            <string>com.gtsd.app</string>
+        </dict>
+    </array>
+
+    <!-- LSApplicationQueriesSchemes for external apps -->
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>gtsd</string>
+        <string>sms</string>
+        <string>mailto</string>
+    </array>
+
+    <!-- Universal Links Support (if using associated domains) -->
+    <!-- Uncomment and configure if you have a domain -->
+    <!--
+    <key>com.apple.developer.associated-domains</key>
+    <array>
+        <string>applinks:gtsd.app</string>
+        <string>applinks:www.gtsd.app</string>
+    </array>
+    -->
+</dict>
+</plist>

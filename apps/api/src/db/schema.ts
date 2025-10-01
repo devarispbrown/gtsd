@@ -17,6 +17,9 @@ export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   email: text('email').notNull().unique(),
   name: text('name').notNull(),
+  phone: varchar('phone', { length: 20 }),
+  smsOptIn: boolean('sms_opt_in').default(true),
+  timezone: varchar('timezone', { length: 50 }).default('America/Los_Angeles'),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -171,6 +174,10 @@ export const streakTypeEnum = pgEnum('streak_type', [
   'progress_photo',
   'overall',
 ]);
+
+export const smsMessageTypeEnum = pgEnum('sms_message_type', ['morning_nudge', 'evening_reminder']);
+
+export const smsStatusEnum = pgEnum('sms_status', ['queued', 'sent', 'delivered', 'failed']);
 
 // ============================================================================
 // PLANS TABLE - Generated daily/weekly plans
@@ -405,6 +412,49 @@ export const streaks = pgTable(
 );
 
 // ============================================================================
+// SMS LOGS TABLE - Track all SMS messages sent
+// ============================================================================
+
+export const smsLogs = pgTable(
+  'sms_logs',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    // Message details
+    messageType: smsMessageTypeEnum('message_type').notNull(),
+    messageBody: text('message_body').notNull(),
+
+    // Twilio tracking
+    twilioSid: varchar('twilio_sid', { length: 100 }),
+    status: smsStatusEnum('status').default('queued').notNull(),
+
+    // Timing
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+
+    // Error tracking
+    errorMessage: text('error_message'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('sms_logs_user_id_idx').on(table.userId),
+    statusIdx: index('sms_logs_status_idx').on(table.status),
+    messageTypeIdx: index('sms_logs_message_type_idx').on(table.messageType),
+    createdAtIdx: index('sms_logs_created_at_idx').on(table.createdAt),
+    userCreatedIdx: index('sms_logs_user_created_idx').on(table.userId, table.createdAt),
+    userTypeCreatedIdx: index('sms_logs_user_type_created_idx').on(
+      table.userId,
+      table.messageType,
+      table.createdAt
+    ),
+  })
+);
+
+// ============================================================================
 // RELATIONS
 // ============================================================================
 
@@ -417,6 +467,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   dailyTasks: many(dailyTasks),
   evidence: many(evidence),
   streaks: many(streaks),
+  smsLogs: many(smsLogs),
 }));
 
 export const plansRelations = relations(plans, ({ one, many }) => ({
@@ -453,6 +504,13 @@ export const evidenceRelations = relations(evidence, ({ one }) => ({
 export const streaksRelations = relations(streaks, ({ one }) => ({
   user: one(users, {
     fields: [streaks.userId],
+    references: [users.id],
+  }),
+}));
+
+export const smsLogsRelations = relations(smsLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [smsLogs.userId],
     references: [users.id],
   }),
 }));
@@ -544,3 +602,13 @@ export type SelectInitialPlanSnapshot = InferSelectModel<typeof initialPlanSnaps
  * Inferred type for inserting an initial plan snapshot
  */
 export type InsertInitialPlanSnapshot = InferInsertModel<typeof initialPlanSnapshot>;
+
+/**
+ * Inferred type for selecting an SMS log
+ */
+export type SelectSmsLog = InferSelectModel<typeof smsLogs>;
+
+/**
+ * Inferred type for inserting an SMS log
+ */
+export type InsertSmsLog = InferInsertModel<typeof smsLogs>;

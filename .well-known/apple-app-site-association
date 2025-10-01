@@ -1,0 +1,21 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAM_ID.com.gtsd.app",
+        "paths": [
+          "/today",
+          "/today/*",
+          "/task/*",
+          "/settings",
+          "/welcome",
+          "/onboarding/*"
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["TEAM_ID.com.gtsd.app"]
+  }
+}

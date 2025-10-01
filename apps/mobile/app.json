@@ -1,4 +1,8 @@
 {
   "name": "GTSD",
-  "displayName": "GTSD"
+  "displayName": "GTSD",
+  "scheme": "gtsd",
+  "expo": {
+    "scheme": "gtsd"
+  }
 }

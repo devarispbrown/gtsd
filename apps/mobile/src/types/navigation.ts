@@ -4,9 +4,7 @@
  */
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { CompositeScreenProps } from '@react-navigation/native';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { TaskType, EvidenceType } from '@gtsd/shared-types';
+import type { TaskType } from '@gtsd/shared-types';
 
 /**
  * Main stack param list
@@ -14,7 +12,10 @@ import type { TaskType, EvidenceType } from '@gtsd/shared-types';
  */
 export type RootStackParamList = {
   // Main screens
-  Today: undefined;
+  Today: {
+    reminder?: 'pending' | 'overdue';
+    scrollToTask?: boolean;
+  } | undefined;
 
   /**
    * Task detail screen

@@ -9,6 +9,7 @@ import healthRouter from './routes/health';
 import metricsRouter from './routes/metrics';
 import onboardingRouter from './routes/onboarding';
 import tasksRouter from './routes/tasks';
+import smsRouter from './routes/sms';
 
 export const createApp = (): Application => {
   const app = express();
@@ -39,6 +40,7 @@ export const createApp = (): Application => {
   // API v1 routes
   app.use('/v1', onboardingRouter);
   app.use('/v1', tasksRouter);
+  app.use('/v1', smsRouter);
 
   // Error handlers (must be last)
   app.use(notFoundHandler);
