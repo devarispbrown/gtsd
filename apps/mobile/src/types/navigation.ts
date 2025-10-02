@@ -15,6 +15,8 @@ export type RootStackParamList = {
   Today: {
     reminder?: 'pending' | 'overdue';
     scrollToTask?: boolean;
+    showPhotoUpload?: boolean;
+    taskIdForPhoto?: number;
   } | undefined;
 
   /**

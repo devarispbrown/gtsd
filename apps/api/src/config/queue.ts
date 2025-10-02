@@ -1,4 +1,4 @@
-import { Queue, Worker } from 'bullmq';
+import { Queue, Worker, Job } from 'bullmq';
 import { env } from './env';
 import { logger } from './logger';
 
@@ -25,7 +25,7 @@ export interface SmsJobData {
 export const createEmailWorker = () => {
   const worker = new Worker(
     'email',
-    async (job: { id: string | number; data: Record<string, unknown> }) => {
+    async (job: Job) => {
       logger.info({ jobId: job.id, data: job.data }, 'Processing email job');
 
       // Simulate email sending
@@ -37,11 +37,11 @@ export const createEmailWorker = () => {
     { connection }
   );
 
-  worker.on('completed', (job: { id: string | number }) => {
+  worker.on('completed', (job: Job) => {
     logger.info({ jobId: job.id }, 'Job completed');
   });
 
-  worker.on('failed', (job: { id: string | number } | undefined, err: Error) => {
+  worker.on('failed', (job: Job | undefined, err: Error) => {
     logger.error({ jobId: job?.id, err }, 'Job failed');
   });
 
