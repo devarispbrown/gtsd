@@ -9,6 +9,7 @@ import {
   jsonb,
   varchar,
   index,
+  uniqueIndex,
   pgEnum,
 } from 'drizzle-orm/pg-core';
 import { relations, InferSelectModel, InferInsertModel } from 'drizzle-orm';
@@ -178,6 +179,8 @@ export const streakTypeEnum = pgEnum('streak_type', [
 export const smsMessageTypeEnum = pgEnum('sms_message_type', ['morning_nudge', 'evening_reminder']);
 
 export const smsStatusEnum = pgEnum('sms_status', ['queued', 'sent', 'delivered', 'failed']);
+
+export const photoEvidenceTypeEnum = pgEnum('photo_evidence_type', ['before', 'during', 'after']);
 
 // ============================================================================
 // PLANS TABLE - Generated daily/weekly plans
@@ -455,6 +458,61 @@ export const smsLogs = pgTable(
 );
 
 // ============================================================================
+// PHOTOS TABLE - Progress photos stored in S3
+// ============================================================================
+
+export const photos = pgTable(
+  'photos',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    // S3 storage details
+    fileKey: text('file_key').notNull(),
+    fileSize: integer('file_size').notNull(), // bytes
+    mimeType: varchar('mime_type', { length: 50 }).notNull(),
+
+    // Image metadata
+    width: integer('width'),
+    height: integer('height'),
+
+    // Timestamps
+    takenAt: timestamp('taken_at', { withTimezone: true }),
+    uploadedAt: timestamp('uploaded_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userCreatedIdx: index('photos_user_created_idx').on(table.userId, table.createdAt),
+    fileKeyIdx: uniqueIndex('photos_file_key_idx').on(table.fileKey),
+  })
+);
+
+// ============================================================================
+// TASK_EVIDENCE TABLE - Many-to-many relationship between tasks and photos
+// ============================================================================
+
+export const taskEvidence = pgTable(
+  'task_evidence',
+  {
+    id: serial('id').primaryKey(),
+    taskId: integer('task_id')
+      .notNull()
+      .references(() => dailyTasks.id, { onDelete: 'cascade' }),
+    photoId: integer('photo_id')
+      .notNull()
+      .references(() => photos.id, { onDelete: 'cascade' }),
+    evidenceType: photoEvidenceTypeEnum('evidence_type').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    taskPhotoIdx: uniqueIndex('task_evidence_task_photo_idx').on(table.taskId, table.photoId),
+    photoIdx: index('task_evidence_photo_idx').on(table.photoId),
+  })
+);
+
+// ============================================================================
 // RELATIONS
 // ============================================================================
 
@@ -468,6 +526,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   evidence: many(evidence),
   streaks: many(streaks),
   smsLogs: many(smsLogs),
+  photos: many(photos),
 }));
 
 export const plansRelations = relations(plans, ({ one, many }) => ({
@@ -488,6 +547,7 @@ export const dailyTasksRelations = relations(dailyTasks, ({ one, many }) => ({
     references: [plans.id],
   }),
   evidence: many(evidence),
+  taskEvidence: many(taskEvidence),
 }));
 
 export const evidenceRelations = relations(evidence, ({ one }) => ({
@@ -512,6 +572,25 @@ export const smsLogsRelations = relations(smsLogs, ({ one }) => ({
   user: one(users, {
     fields: [smsLogs.userId],
     references: [users.id],
+  }),
+}));
+
+export const photosRelations = relations(photos, ({ one, many }) => ({
+  user: one(users, {
+    fields: [photos.userId],
+    references: [users.id],
+  }),
+  taskEvidence: many(taskEvidence),
+}));
+
+export const taskEvidenceRelations = relations(taskEvidence, ({ one }) => ({
+  task: one(dailyTasks, {
+    fields: [taskEvidence.taskId],
+    references: [dailyTasks.id],
+  }),
+  photo: one(photos, {
+    fields: [taskEvidence.photoId],
+    references: [photos.id],
   }),
 }));
 
@@ -612,3 +691,23 @@ export type SelectSmsLog = InferSelectModel<typeof smsLogs>;
  * Inferred type for inserting an SMS log
  */
 export type InsertSmsLog = InferInsertModel<typeof smsLogs>;
+
+/**
+ * Inferred type for selecting a photo
+ */
+export type SelectPhoto = InferSelectModel<typeof photos>;
+
+/**
+ * Inferred type for inserting a photo
+ */
+export type InsertPhoto = InferInsertModel<typeof photos>;
+
+/**
+ * Inferred type for selecting task evidence
+ */
+export type SelectTaskEvidence = InferSelectModel<typeof taskEvidence>;
+
+/**
+ * Inferred type for inserting task evidence
+ */
+export type InsertTaskEvidence = InferInsertModel<typeof taskEvidence>;

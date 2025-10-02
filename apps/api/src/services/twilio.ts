@@ -125,7 +125,7 @@ export class TwilioService {
         code: SpanStatusCode.ERROR,
         message: errorMessage
       });
-      span.recordException(error);
+      span.recordException(error as Error);
 
       return {
         success: false,

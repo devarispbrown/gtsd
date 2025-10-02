@@ -10,6 +10,7 @@ import metricsRouter from './routes/metrics';
 import onboardingRouter from './routes/onboarding';
 import tasksRouter from './routes/tasks';
 import smsRouter from './routes/sms';
+import progressRouter from './routes/progress/photos';
 
 export const createApp = (): Application => {
   const app = express();
@@ -41,6 +42,7 @@ export const createApp = (): Application => {
   app.use('/v1', onboardingRouter);
   app.use('/v1', tasksRouter);
   app.use('/v1', smsRouter);
+  app.use('/v1/progress', progressRouter);
 
   // Error handlers (must be last)
   app.use(notFoundHandler);
