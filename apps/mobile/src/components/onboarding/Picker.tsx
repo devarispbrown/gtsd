@@ -6,9 +6,8 @@ import {
   StyleSheet,
   Modal,
   FlatList,
-  Platform,
 } from 'react-native';
-import { Controller, Control, FieldError } from 'react-hook-form';
+import { Controller, Control, FieldError, FieldErrorsImpl, Merge } from 'react-hook-form';
 import { colors } from '@constants/colors';
 import { useThemeStore } from '@store/themeStore';
 
@@ -23,7 +22,7 @@ interface PickerProps {
   name: string;
   label: string;
   items: PickerItem[];
-  error?: FieldError;
+  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>>;
   required?: boolean;
   placeholder?: string;
 }
@@ -227,13 +226,13 @@ export const Picker: React.FC<PickerProps> = ({
         )}
       />
 
-      {error && (
+      {error?.message && (
         <Text
           style={styles.errorText}
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
         >
-          {error.message}
+          {String(error.message)}
         </Text>
       )}
     </View>

@@ -1,12 +1,17 @@
 import apiClient, { apiRequest } from './client';
-import {
-  Task,
-  TodayTasksResponse,
-  TasksQueryParams,
+import type {
+  DailyTask,
+  GetTodayTasksResponse,
+  GetTodayTasksQuery,
   CreateEvidenceRequest,
   Evidence,
-  TaskStatus,
 } from '../types/tasks';
+import { TaskStatus } from '../types/tasks';
+
+// Type aliases for backward compatibility
+type Task = DailyTask;
+type TodayTasksResponse = GetTodayTasksResponse;
+type TasksQueryParams = GetTodayTasksQuery;
 
 class TaskService {
   // Get today's tasks with optional filters

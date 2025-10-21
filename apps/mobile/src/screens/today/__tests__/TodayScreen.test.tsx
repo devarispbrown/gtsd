@@ -1,8 +1,9 @@
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import { TodayScreen } from '../TodayScreen';
 import { useTodayStore } from '../../../stores/todayStore';
-import { Task, TaskGroup } from '../../../types/tasks';
+import { TaskGroup } from '../../../types/tasks';
+import { TaskType, TaskStatus } from '@gtsd/shared-types';
 
 // Mock the stores
 jest.mock('../../../stores/todayStore');
@@ -40,12 +41,17 @@ describe('TodayScreen', () => {
       tasks: [
         {
           id: 1,
+          userId: 1,
           title: 'Morning Workout',
           description: 'Upper body strength training',
-          taskType: 'workout',
-          status: 'pending',
+          taskType: TaskType.Workout,
+          status: TaskStatus.Pending,
+          dueDate: '2025-09-29',
+          priority: 1,
+          order: 1,
           createdAt: '2025-09-29T08:00:00Z',
           updatedAt: '2025-09-29T08:00:00Z',
+          evidence: [],
         },
       ],
       completedCount: 0,
@@ -56,13 +62,18 @@ describe('TodayScreen', () => {
       tasks: [
         {
           id: 2,
+          userId: 1,
           title: 'Breakfast',
           description: 'High protein breakfast',
-          taskType: 'meal',
-          status: 'completed',
+          taskType: TaskType.Meal,
+          status: TaskStatus.Completed,
+          dueDate: '2025-09-29',
+          priority: 1,
+          order: 1,
           createdAt: '2025-09-29T08:00:00Z',
           updatedAt: '2025-09-29T09:00:00Z',
           completedAt: '2025-09-29T09:00:00Z',
+          evidence: [],
         },
       ],
       completedCount: 1,
@@ -95,7 +106,7 @@ describe('TodayScreen', () => {
   });
 
   it('renders correctly with task groups', () => {
-    const { getByText, getAllByText } = render(<TodayScreen />);
+    const { getByText } = render(<TodayScreen />);
 
     // Check header
     expect(getByText('Today')).toBeTruthy();
@@ -134,7 +145,7 @@ describe('TodayScreen', () => {
   });
 
   it('handles pull to refresh', async () => {
-    const { getByTestId } = render(<TodayScreen />);
+    render(<TodayScreen />);
 
     // Simulate pull to refresh would require more complex setup with ScrollView
     // For now, just verify the refresh function is available
@@ -147,7 +158,7 @@ describe('TodayScreen', () => {
     const workoutFilter = getByText('Workout');
     fireEvent.press(workoutFilter);
 
-    expect(mockStore.setFilterType).toHaveBeenCalledWith('workout');
+    expect(mockStore.setFilterType).toHaveBeenCalledWith(TaskType.Workout);
   });
 
   it('handles task selection', () => {

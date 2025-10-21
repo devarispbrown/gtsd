@@ -44,7 +44,7 @@ const activityLevelOptions: PickerItem[] = [
   },
 ];
 
-export const ActivityLevelScreen: React.FC<Props> = ({ navigation }) => {
+export function ActivityLevelScreen({ navigation }: Props) {
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
   const {
@@ -326,7 +326,7 @@ export const ActivityLevelScreen: React.FC<Props> = ({ navigation }) => {
       </View>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

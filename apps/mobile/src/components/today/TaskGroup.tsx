@@ -10,9 +10,9 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   useSharedValue,
-  runOnJS,
+  
 } from 'react-native-reanimated';
-import { TaskGroup as TaskGroupType, Task } from '../../types/tasks';
+import { TaskGroup as TaskGroupType } from '../../types/tasks';
 import { TaskTile } from './TaskTile';
 import { colors } from '../../constants/colors';
 

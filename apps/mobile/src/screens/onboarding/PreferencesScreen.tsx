@@ -43,7 +43,7 @@ const mealOptions: PickerItem[] = [
   { label: '6 meals', value: '6' },
 ];
 
-export const PreferencesScreen: React.FC<Props> = ({ navigation }) => {
+export function PreferencesScreen({ navigation }: Props) {
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
   const {
@@ -320,7 +320,7 @@ export const PreferencesScreen: React.FC<Props> = ({ navigation }) => {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

@@ -21,7 +21,8 @@ import Animated, {
   SlideOutDown,
 } from 'react-native-reanimated';
 import HapticFeedback from 'react-native-haptic-feedback';
-import { Task, EvidenceType } from '../../types/tasks';
+import { Task } from '../../types/tasks';
+import { EvidenceType } from '@gtsd/shared-types';
 import { useEvidenceStore } from '../../stores/evidenceStore';
 import { useTodayStore } from '../../stores/todayStore';
 import { EvidenceForm } from '../../components/today/EvidenceForm';
@@ -44,7 +45,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const theme = isDarkMode ? colors.dark : colors.light;
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const [selectedEvidenceType, setSelectedEvidenceType] = useState<EvidenceType>('text_log');
+  const [selectedEvidenceType, setSelectedEvidenceType] = useState<EvidenceType>(EvidenceType.TextLog);
   const [showEvidenceForm, setShowEvidenceForm] = useState(false);
 
   const {
@@ -317,19 +318,19 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   const evidenceTypeOptions = [
     {
-      type: 'text_log' as EvidenceType,
+      type: EvidenceType.TextLog,
       icon: '📝',
       title: 'Text Note',
       description: 'Add a quick note about completion',
     },
     {
-      type: 'metrics' as EvidenceType,
+      type: EvidenceType.Metrics,
       icon: '📊',
       title: 'Metrics',
       description: 'Log specific numbers and data',
     },
     {
-      type: 'photo_reference' as EvidenceType,
+      type: EvidenceType.PhotoReference,
       icon: '📸',
       title: 'Photo',
       description: 'Take or select a photo as evidence',
@@ -399,14 +400,6 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <View style={styles.metadataChip}>
                         <Text style={styles.metadataText}>
                           {task.priority} priority
-                        </Text>
-                      </View>
-                    )}
-
-                    {task.timeEstimate && (
-                      <View style={styles.metadataChip}>
-                        <Text style={styles.metadataText}>
-                          {task.timeEstimate} minutes
                         </Text>
                       </View>
                     )}

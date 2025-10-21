@@ -17,7 +17,7 @@ import Animated, {
   Layout,
 } from 'react-native-reanimated';
 import HapticFeedback from 'react-native-haptic-feedback';
-import { Task, TaskStatus } from '../../types/tasks';
+import { Task } from '../../types/tasks';
 import { colors } from '../../constants/colors';
 
 interface TaskTileProps {
@@ -33,7 +33,6 @@ export const TaskTile: React.FC<TaskTileProps> = ({
   onPress,
   onQuickComplete,
   isLast = false,
-  groupColor,
 }) => {
   const isDarkMode = useColorScheme() === 'dark';
   const theme = isDarkMode ? colors.dark : colors.light;
@@ -122,31 +121,6 @@ export const TaskTile: React.FC<TaskTileProps> = ({
       color: theme.textSecondary,
       marginTop: 2,
     },
-    taskMeta: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: 4,
-      gap: 8,
-    },
-    taskMetaItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    taskMetaText: {
-      fontSize: 12,
-      color: theme.textTertiary,
-    },
-    priorityBadge: {
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
-    },
-    priorityText: {
-      fontSize: 10,
-      fontWeight: '600',
-      textTransform: 'uppercase',
-    },
     chevron: {
       fontSize: 18,
       color: theme.textTertiary,
@@ -173,19 +147,6 @@ export const TaskTile: React.FC<TaskTileProps> = ({
       fontWeight: '600',
     },
   });
-
-  const getPriorityColor = (priority?: string) => {
-    switch (priority) {
-      case 'urgent':
-        return theme.error;
-      case 'high':
-        return theme.warning;
-      case 'medium':
-        return theme.primary;
-      default:
-        return theme.textTertiary;
-    }
-  };
 
   return (
     <GestureHandlerRootView>
@@ -232,34 +193,7 @@ export const TaskTile: React.FC<TaskTileProps> = ({
                   </Text>
                 )}
 
-                <View style={styles.taskMeta}>
-                  {task.timeEstimate && (
-                    <View style={styles.taskMetaItem}>
-                      <Text style={styles.taskMetaText}>⏱</Text>
-                      <Text style={styles.taskMetaText}>
-                        {task.timeEstimate} min
-                      </Text>
-                    </View>
-                  )}
-
-                  {task.priority && (
-                    <View
-                      style={[
-                        styles.priorityBadge,
-                        { backgroundColor: getPriorityColor(task.priority) + '20' }
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.priorityText,
-                          { color: getPriorityColor(task.priority) }
-                        ]}
-                      >
-                        {task.priority}
-                      </Text>
-                    </View>
-                  )}
-                </View>
+                {/* Task meta (timeEstimate and priority removed - not in DailyTask type) */}
               </View>
 
               <Text style={styles.chevron}>›</Text>

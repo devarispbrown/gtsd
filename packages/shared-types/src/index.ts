@@ -21,5 +21,17 @@ export * from './task-metadata';
 // Evidence metrics types
 export * from './evidence-metrics';
 
+// Onboarding types
+export * from './onboarding';
+
+// Photo upload types
+export * from './photos';
+
+// SMS/notification types
+export * from './sms';
+
+// Authentication types
+export * from './auth-types';
+
 // Type guards
 export * from './type-guards';

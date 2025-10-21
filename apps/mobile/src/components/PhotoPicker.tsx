@@ -47,7 +47,6 @@ interface PhotoPickerProps {
 const PhotoPicker: React.FC<PhotoPickerProps> = ({
   onPhotoSelected,
   onCancel,
-  taskId,
   evidenceType,
   maxFileSize = 10 * 1024 * 1024, // 10MB default
 }) => {
@@ -57,10 +56,10 @@ const PhotoPicker: React.FC<PhotoPickerProps> = ({
 
   const hapticFeedback = useCallback((type: 'success' | 'error' | 'selection' = 'selection') => {
     const feedbackType = type === 'success'
-      ? ReactNativeHapticFeedback.HapticFeedbackTypes.notificationSuccess
+      ? 'notificationSuccess'
       : type === 'error'
-      ? ReactNativeHapticFeedback.HapticFeedbackTypes.notificationError
-      : ReactNativeHapticFeedback.HapticFeedbackTypes.impactLight;
+      ? 'notificationError'
+      : 'impactLight';
 
     ReactNativeHapticFeedback.trigger(feedbackType, {
       enableVibrateFallback: true,

@@ -17,7 +17,7 @@ import { StepIndicator } from '../../components/onboarding/StepIndicator';
 
 type Props = NativeStackScreenProps<any, 'Review'>;
 
-export const ReviewScreen: React.FC<Props> = ({ navigation }) => {
+export function ReviewScreen({ navigation }: Props) {
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
   const {
@@ -53,9 +53,10 @@ export const ReviewScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const formatDate = (date: Date | undefined) => {
+  const formatDate = (date: Date | string | undefined) => {
     if (!date) return 'Not set';
-    return date.toLocaleDateString('en-US', {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return dateObj.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -413,8 +414,10 @@ export const ReviewScreen: React.FC<Props> = ({ navigation }) => {
               ]}
             >
               {data.partners && data.partners.length > 0 ? (
-                data.partners.map((partner, index) => (
-                  <View key={partner.id} style={styles.reviewItem}>
+                data.partners.map((partner, index) => {
+                  const partnerId = 'id' in partner ? partner.id : index;
+                  return (
+                  <View key={partnerId} style={styles.reviewItem}>
                     <Text style={[styles.reviewLabel, { color: isDark ? colors.dark.textSecondary : colors.light.textSecondary }]}>
                       Partner {index + 1}:
                     </Text>
@@ -422,7 +425,8 @@ export const ReviewScreen: React.FC<Props> = ({ navigation }) => {
                       {partner.name} ({partner.relationship})
                     </Text>
                   </View>
-                ))
+                  );
+                })
               ) : (
                 <Text style={[styles.reviewValue, { color: isDark ? colors.dark.textSecondary : colors.light.textSecondary }]}>
                   No partners added
@@ -476,7 +480,7 @@ export const ReviewScreen: React.FC<Props> = ({ navigation }) => {
       </View>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

@@ -12,6 +12,7 @@ import UploadProgressModal from '../components/UploadProgressModal';
 import PhotoGallery from '../components/PhotoGallery';
 import photoUploadService from '../services/photoUpload';
 import { usePhotoStore } from '../stores/photoStore';
+import { PhotoEvidenceType } from '@gtsd/shared-types';
 
 // Mock dependencies
 jest.mock('react-native-image-picker');
@@ -41,19 +42,23 @@ const mockPhotoData = {
 const mockPhoto = {
   id: 1,
   fileKey: 'photos/test-photo.jpg',
+  fileSize: 1024000,
+  mimeType: 'image/jpeg' as const,
+  width: 1920,
+  height: 1080,
   url: 'https://s3.amazonaws.com/bucket/photos/test-photo.jpg',
   thumbnailUrl: 'https://s3.amazonaws.com/bucket/photos/thumb-test-photo.jpg',
   metadata: {
     fileName: 'test-photo.jpg',
-    mimeType: 'image/jpeg',
+    mimeType: 'image/jpeg' as const,
     fileSize: 1024000,
     width: 1920,
     height: 1080,
     takenAt: '2024-01-01T00:00:00Z',
   },
   userId: 1,
+  uploadedAt: '2024-01-01T00:00:00Z',
   createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
 };
 
 describe('PhotoPicker', () => {
@@ -84,7 +89,7 @@ describe('PhotoPicker', () => {
     const onCancel = jest.fn();
 
     // Mock camera response
-    (ImagePicker.launchCamera as jest.Mock).mockImplementation((options, callback) => {
+    (ImagePicker.launchCamera as jest.Mock).mockImplementation((_options, callback) => {
       callback({
         didCancel: false,
         assets: [{
@@ -98,7 +103,7 @@ describe('PhotoPicker', () => {
       });
     });
 
-    const { getByText, getByLabelText } = render(
+    const { getByText } = render(
       <PhotoPicker
         onPhotoSelected={onPhotoSelected}
         onCancel={onCancel}
@@ -132,7 +137,7 @@ describe('PhotoPicker', () => {
     const maxFileSize = 5 * 1024 * 1024; // 5MB
 
     // Mock gallery response with large file
-    (ImagePicker.launchImageLibrary as jest.Mock).mockImplementation((options, callback) => {
+    (ImagePicker.launchImageLibrary as jest.Mock).mockImplementation((_options, callback) => {
       callback({
         didCancel: false,
         assets: [{
@@ -290,7 +295,7 @@ describe('PhotoGallery', () => {
     const onDeletePhoto = jest.fn().mockResolvedValue(undefined);
     const photos = [mockPhoto];
 
-    jest.spyOn(Alert, 'alert').mockImplementation((title, message, buttons) => {
+    jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
       // Simulate pressing "Delete"
       if (buttons && buttons[1]) {
         buttons[1].onPress?.();
@@ -328,7 +333,7 @@ describe('PhotoGallery', () => {
     const onRefresh = jest.fn();
     const photos = [mockPhoto];
 
-    const { getByTestId } = render(
+    render(
       <PhotoGallery
         photos={photos}
         onRefresh={onRefresh}
@@ -414,13 +419,13 @@ describe('Photo Upload Service', () => {
 
     const result = await photoUploadService.getPhotos({
       taskId: 123,
-      evidenceType: 'before',
+      evidenceType: PhotoEvidenceType.Before,
     });
 
     expect(result.data).toEqual(photos);
     expect(photoUploadService.getPhotos).toHaveBeenCalledWith({
       taskId: 123,
-      evidenceType: 'before',
+      evidenceType: PhotoEvidenceType.Before,
     });
   });
 
@@ -479,7 +484,7 @@ describe('Photo Store', () => {
 
     // Start upload
     await act(async () => {
-      await store.uploadPhoto(mockPhotoData, 123, 'before', 'Test photo');
+      await store.uploadPhoto(mockPhotoData, 123, PhotoEvidenceType.Before, 'Test photo');
     });
 
     const state = usePhotoStore.getState();

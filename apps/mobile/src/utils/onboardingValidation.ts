@@ -1,10 +1,4 @@
 import { z } from 'zod';
-import {
-  Gender,
-  ActivityLevel,
-  DietaryPreference,
-  RelationshipType,
-} from '../types/onboarding';
 
 // Validation schemas for each step
 

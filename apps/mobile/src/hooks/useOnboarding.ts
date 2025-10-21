@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,7 +16,6 @@ import {
   preferencesSchema,
   partnersSchema,
   completeOnboardingSchema,
-  validateStep,
 } from '../utils/onboardingValidation';
 
 const STORAGE_KEY = '@gtsd:onboarding:progress';
@@ -163,16 +162,22 @@ export const useOnboarding = (): UseOnboardingReturn => {
   // Update form default values when data changes
   const updateFormDefaults = (newData: Partial<OnboardingData>) => {
     if (newData.dateOfBirth || newData.gender) {
+      const dateValue = typeof newData.dateOfBirth === 'string'
+        ? new Date(newData.dateOfBirth)
+        : newData.dateOfBirth;
       accountBasicsForm.reset({
-        dateOfBirth: newData.dateOfBirth,
+        dateOfBirth: dateValue,
         gender: newData.gender,
       });
     }
     if (newData.primaryGoal || newData.targetWeight || newData.targetDate) {
+      const targetDateValue = typeof newData.targetDate === 'string'
+        ? new Date(newData.targetDate)
+        : newData.targetDate;
       goalsForm.reset({
         primaryGoal: newData.primaryGoal,
         targetWeight: newData.targetWeight,
-        targetDate: newData.targetDate,
+        targetDate: targetDateValue,
       });
     }
     if (newData.currentWeight || newData.height) {
@@ -188,14 +193,27 @@ export const useOnboarding = (): UseOnboardingReturn => {
     }
     if (newData.dietaryPreferences || newData.allergies || newData.mealsPerDay) {
       preferencesForm.reset({
-        dietaryPreferences: newData.dietaryPreferences || ['none'],
+        dietaryPreferences: (newData.dietaryPreferences || ['none']) as any,
         allergies: newData.allergies || [],
         mealsPerDay: newData.mealsPerDay || 3,
       });
     }
     if (newData.partners) {
+      const transformedPartners = (newData.partners || []).map(p => {
+        // Type guard to check if partner has id
+        const hasId = 'id' in p && p.id !== undefined;
+        const id = hasId ? (typeof p.id === 'number' ? String(p.id) : p.id) : undefined;
+
+        return {
+          name: p.name,
+          email: p.email,
+          phone: p.phone,
+          relationship: p.relationship,
+          ...(id && { id }),
+        };
+      });
       partnersForm.reset({
-        partners: newData.partners || [],
+        partners: transformedPartners as any,
       });
     }
   };
@@ -297,13 +315,20 @@ export const useOnboarding = (): UseOnboardingReturn => {
         return { success: false, error: firstError.message };
       }
 
-      // Prepare API request
+      // Prepare API request with type conversions
+      const dateOfBirth = data.dateOfBirth instanceof Date
+        ? data.dateOfBirth.toISOString()
+        : data.dateOfBirth!;
+      const targetDate = data.targetDate instanceof Date
+        ? data.targetDate.toISOString()
+        : data.targetDate!;
+
       const apiData: OnboardingApiRequest = {
-        dateOfBirth: data.dateOfBirth!.toISOString(),
+        dateOfBirth,
         gender: data.gender!,
         primaryGoal: data.primaryGoal!,
         targetWeight: data.targetWeight!,
-        targetDate: data.targetDate!.toISOString(),
+        targetDate,
         currentWeight: data.currentWeight!,
         height: data.height!,
         activityLevel: data.activityLevel!,

@@ -3,7 +3,7 @@
  * Grid display of photos with full-screen viewing and management
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -31,6 +31,7 @@ interface PhotoGalleryProps {
   numColumns?: number;
   showTaskFilter?: boolean;
   taskId?: number;
+  testID?: string;
 }
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -43,7 +44,6 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
   onPhotoPress,
   emptyMessage = 'No photos yet',
   numColumns = 3,
-  showTaskFilter = false,
   taskId,
 }) => {
   const [refreshing, setRefreshing] = useState(false);
@@ -63,7 +63,7 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
 
   const handlePhotoPress = useCallback((photo: Photo) => {
     ReactNativeHapticFeedback.trigger(
-      ReactNativeHapticFeedback.HapticFeedbackTypes.impactLight,
+      'impactLight',
       {
         enableVibrateFallback: true,
         ignoreAndroidSystemSettings: false,
@@ -93,7 +93,7 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
           style: 'destructive',
           onPress: async () => {
             ReactNativeHapticFeedback.trigger(
-              ReactNativeHapticFeedback.HapticFeedbackTypes.notificationWarning,
+              'notificationWarning',
               {
                 enableVibrateFallback: true,
                 ignoreAndroidSystemSettings: false,
@@ -105,7 +105,7 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
               await onDeletePhoto(photo.id);
               setSelectedPhoto(null);
               ReactNativeHapticFeedback.trigger(
-                ReactNativeHapticFeedback.HapticFeedbackTypes.notificationSuccess,
+                'notificationSuccess',
                 {
                   enableVibrateFallback: true,
                   ignoreAndroidSystemSettings: false,
@@ -132,7 +132,7 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
           { width: itemSize, height: itemSize },
         ]}
         onPress={() => handlePhotoPress(item)}
-        accessibilityLabel={`Photo ${item.metadata.fileName}`}
+        accessibilityLabel={`Photo ${item.metadata?.fileName || 'Unknown'}`}
         accessibilityRole="button"
       >
         <Image
@@ -140,7 +140,7 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
           style={styles.photoImage}
           resizeMode="cover"
         />
-        {item.metadata.evidenceType && (
+        {item.metadata?.evidenceType && (
           <View style={[
             styles.badge,
             item.metadata.evidenceType === 'before' && styles.beforeBadge,
@@ -237,9 +237,9 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
 
               <View style={styles.photoDetails}>
                 <Text style={styles.photoFileName}>
-                  {selectedPhoto.metadata.fileName}
+                  {selectedPhoto.metadata?.fileName || 'Unknown'}
                 </Text>
-                {selectedPhoto.metadata.description && (
+                {selectedPhoto.metadata?.description && (
                   <Text style={styles.photoDescription}>
                     {selectedPhoto.metadata.description}
                   </Text>

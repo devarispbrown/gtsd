@@ -11,6 +11,7 @@ import photoUploadService, {
   UploadController,
   GetPhotosQuery,
 } from '../services/photoUpload';
+import { PhotoEvidenceType, PhotoMimeType } from '@gtsd/shared-types';
 import type { PhotoData } from '../components/PhotoPicker';
 
 // Store types
@@ -29,7 +30,7 @@ interface PhotoStore {
   uploadPhoto: (
     photo: PhotoData,
     taskId?: number,
-    evidenceType?: 'before' | 'during' | 'after',
+    evidenceType?: PhotoEvidenceType,
     description?: string
   ) => Promise<void>;
   fetchPhotos: (query?: GetPhotosQuery) => Promise<void>;
@@ -68,7 +69,7 @@ const loadCachedPhotos = async (): Promise<Photo[]> => {
 let lastUploadData: {
   photo: PhotoData;
   taskId?: number;
-  evidenceType?: 'before' | 'during' | 'after';
+  evidenceType?: PhotoEvidenceType;
   description?: string;
 } | null = null;
 
@@ -102,10 +103,12 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
     set({ uploadController: controller });
 
     try {
-      // Prepare metadata
+      // Prepare metadata - validate mimeType
+      const validMimeType: PhotoMimeType = photo.mimeType as PhotoMimeType;
+
       const metadata: PhotoMetadata = {
         fileName: photo.fileName,
-        mimeType: photo.mimeType,
+        mimeType: validMimeType,
         fileSize: photo.fileSize,
         width: photo.width,
         height: photo.height,
@@ -142,8 +145,12 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
           metadata: result.data.metadata,
           taskId,
           userId: 0, // Will be set by server
+          fileSize: photo.fileSize,
+          mimeType: validMimeType,
+          width: photo.width,
+          height: photo.height,
+          uploadedAt: result.data.createdAt,
           createdAt: result.data.createdAt,
-          updatedAt: result.data.createdAt,
         };
 
         // Add to photos list (optimistic update)

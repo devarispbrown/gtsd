@@ -29,7 +29,8 @@ import { StreakBadge } from '../../components/today/StreakBadge';
 import { CompletionProgress } from '../../components/today/CompletionProgress';
 import { TaskDetailModal } from './TaskDetailModal';
 import { colors } from '../../constants/colors';
-import { TaskType, TASK_TYPE_COLORS } from '../../types/tasks';
+import { TASK_TYPE_COLORS } from '../../types/tasks';
+import { TaskType } from '@gtsd/shared-types';
 import type { TodayScreenProps } from '../../types/navigation';
 
 export const TodayScreen: React.FC = () => {
@@ -60,7 +61,6 @@ export const TodayScreen: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedDate] = useState(new Date());
   const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
-  const [highlightedTaskId, setHighlightedTaskId] = useState<number | null>(null);
 
   // Animation values
   const progressScale = useSharedValue(1);
@@ -82,11 +82,9 @@ export const TodayScreen: React.FC = () => {
           // Find first incomplete task
           const firstIncompleteTask = taskGroups
             .flatMap((group) => group.tasks)
-            .find((task) => !task.completed);
+            .find((task) => !task.completedAt);
 
           if (firstIncompleteTask) {
-            setHighlightedTaskId(firstIncompleteTask.id);
-
             // Show notification about pending tasks
             setTimeout(() => {
               Alert.alert(
@@ -323,10 +321,10 @@ export const TodayScreen: React.FC = () => {
   // Filter options
   const filterOptions: Array<{ label: string; value: TaskType | null }> = [
     { label: 'All', value: null },
-    { label: 'Workout', value: 'workout' },
-    { label: 'Meals', value: 'meal' },
-    { label: 'Supplements', value: 'supplement' },
-    { label: 'Cardio', value: 'cardio' },
+    { label: 'Workout', value: TaskType.Workout },
+    { label: 'Meals', value: TaskType.Meal },
+    { label: 'Supplements', value: TaskType.Supplement },
+    { label: 'Cardio', value: TaskType.Cardio },
   ];
 
   // Get filtered groups

@@ -26,7 +26,7 @@ const genderOptions: PickerItem[] = [
   { label: 'Prefer not to say', value: 'prefer_not_to_say' },
 ];
 
-export const AccountBasicsScreen: React.FC<Props> = ({ navigation }) => {
+export function AccountBasicsScreen({ navigation }: Props) {
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
   const {
@@ -37,7 +37,6 @@ export const AccountBasicsScreen: React.FC<Props> = ({ navigation }) => {
     saveStepData,
     goToNextStep,
     goToPreviousStep,
-    canNavigateForward,
   } = useOnboarding();
 
   const form = getFormForStep('accountBasics');
@@ -238,7 +237,7 @@ export const AccountBasicsScreen: React.FC<Props> = ({ navigation }) => {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

@@ -19,6 +19,7 @@ import PhotoGallery from './PhotoGallery';
 import { usePhotoStore, usePhotosForTask, useUploadState } from '../stores/photoStore';
 import { requestPhotoPermissions } from '../utils/permissions';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
+import { PhotoEvidenceType } from '@gtsd/shared-types';
 
 interface PhotoIntegrationProps {
   taskId?: number;
@@ -73,7 +74,7 @@ const PhotoIntegration: React.FC<PhotoIntegrationProps> = ({
     }
 
     ReactNativeHapticFeedback.trigger(
-      ReactNativeHapticFeedback.HapticFeedbackTypes.impactLight,
+      'impactLight',
       {
         enableVibrateFallback: true,
         ignoreAndroidSystemSettings: false,
@@ -87,11 +88,20 @@ const PhotoIntegration: React.FC<PhotoIntegrationProps> = ({
   const handlePhotoSelected = useCallback(async (photo: PhotoData) => {
     setShowPhotoPicker(false);
 
+    // Map string to enum
+    const evidenceTypeMap: Record<string, PhotoEvidenceType> = {
+      'before': PhotoEvidenceType.Before,
+      'during': PhotoEvidenceType.During,
+      'after': PhotoEvidenceType.After,
+    };
+
+    const evidenceType = selectedEvidenceType ? evidenceTypeMap[selectedEvidenceType] : undefined;
+
     // Upload the photo
     await uploadPhoto(
       photo,
       taskId,
-      selectedEvidenceType,
+      evidenceType,
       taskTitle ? `Photo for: ${taskTitle}` : undefined
     );
 
@@ -105,7 +115,7 @@ const PhotoIntegration: React.FC<PhotoIntegrationProps> = ({
     await deletePhoto(photoId);
 
     ReactNativeHapticFeedback.trigger(
-      ReactNativeHapticFeedback.HapticFeedbackTypes.notificationSuccess,
+      'notificationSuccess',
       {
         enableVibrateFallback: true,
         ignoreAndroidSystemSettings: false,
@@ -122,7 +132,7 @@ const PhotoIntegration: React.FC<PhotoIntegrationProps> = ({
   }, [resetUploadState]);
 
   const getPhotoCount = (type: 'before' | 'during' | 'after') => {
-    return taskPhotos.filter(p => p.metadata.evidenceType === type).length;
+    return taskPhotos.filter(p => p.metadata?.evidenceType === type).length;
   };
 
   return (

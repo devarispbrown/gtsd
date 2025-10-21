@@ -5,13 +5,34 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import {
   Task,
   TaskGroup,
-  TaskType,
   TodayTasksResponse,
   StreakData,
-  TaskStatus,
   TasksQueryParams,
 } from '../types/tasks';
+import { TaskType, TaskStatus } from '@gtsd/shared-types';
 import { taskApi } from '../api/taskService';
+import type { GetTodayTasksResponse } from '@gtsd/shared-types';
+
+/**
+ * Transform API response to mobile UI format
+ * Converts tasksByType to TaskGroup array structure
+ */
+const transformApiResponse = (apiResponse: GetTodayTasksResponse): TodayTasksResponse => {
+  const taskGroups: TaskGroup[] = Object.entries(apiResponse.tasksByType).map(([type, tasks]) => ({
+    type,
+    tasks,
+    completedCount: tasks.filter(t => t.status === 'completed').length,
+    totalCount: tasks.length,
+  }));
+
+  return {
+    tasks: taskGroups,
+    streaks: apiResponse.streak,
+    completionRate: apiResponse.completionPercentage,
+    totalTasks: apiResponse.totalTasks,
+    completedTasks: apiResponse.completedTasks,
+  };
+};
 
 interface TodayState {
   // Data
@@ -106,12 +127,13 @@ export const useTodayStore = create<TodayState>()(
             const result = await taskApi.getTodayTasks(queryParams);
 
             if (result.data) {
+              const transformed = transformApiResponse(result.data);
               set({
-                taskGroups: result.data.tasks,
-                streaks: result.data.streaks,
-                completionRate: result.data.completionRate,
-                totalTasks: result.data.totalTasks,
-                completedTasks: result.data.completedTasks,
+                taskGroups: transformed.tasks,
+                streaks: transformed.streaks,
+                completionRate: transformed.completionRate,
+                totalTasks: transformed.totalTasks,
+                completedTasks: transformed.completedTasks,
                 lastFetchTime: Date.now(),
                 isLoading: false,
               });
@@ -141,12 +163,13 @@ export const useTodayStore = create<TodayState>()(
             });
 
             if (result.data) {
+              const transformed = transformApiResponse(result.data);
               set({
-                taskGroups: result.data.tasks,
-                streaks: result.data.streaks,
-                completionRate: result.data.completionRate,
-                totalTasks: result.data.totalTasks,
-                completedTasks: result.data.completedTasks,
+                taskGroups: transformed.tasks,
+                streaks: transformed.streaks,
+                completionRate: transformed.completionRate,
+                totalTasks: transformed.totalTasks,
+                completedTasks: transformed.completedTasks,
                 lastFetchTime: Date.now(),
                 isRefreshing: false,
                 error: null,
@@ -201,7 +224,7 @@ export const useTodayStore = create<TodayState>()(
 
         // Complete task
         completeTask: async (taskId: number) => {
-          await get().updateTaskStatus(taskId, 'completed');
+          await get().updateTaskStatus(taskId, TaskStatus.Completed);
         },
 
         // Skip task
@@ -210,7 +233,7 @@ export const useTodayStore = create<TodayState>()(
           if (!originalTask) return;
 
           // Optimistic update
-          get().optimisticUpdateTask(taskId, { status: 'skipped' });
+          get().optimisticUpdateTask(taskId, { status: TaskStatus.Skipped });
 
           try {
             const result = await taskApi.skipTask(taskId, reason);

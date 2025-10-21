@@ -19,7 +19,7 @@ import { DatePicker } from '../../components/onboarding/DatePicker';
 
 type Props = NativeStackScreenProps<any, 'Goals'>;
 
-export const GoalsScreen: React.FC<Props> = ({ navigation }) => {
+export function GoalsScreen({ navigation }: Props) {
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
   const {
@@ -297,7 +297,7 @@ export const GoalsScreen: React.FC<Props> = ({ navigation }) => {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

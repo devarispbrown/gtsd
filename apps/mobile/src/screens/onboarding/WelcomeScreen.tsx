@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
-  Image,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors } from '@constants/colors';
@@ -16,7 +15,7 @@ import { StepIndicator } from '../../components/onboarding/StepIndicator';
 
 type Props = NativeStackScreenProps<any, 'Welcome'>;
 
-export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
+export function WelcomeScreen({ navigation }: Props) {
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
   const { stepIndex, totalSteps, goToNextStep } = useOnboarding();
@@ -222,7 +221,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
       </View>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

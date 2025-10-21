@@ -3,13 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
   AccessibilityInfo,
 } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
-  interpolate,
 } from 'react-native-reanimated';
 import { colors } from '@constants/colors';
 import { useThemeStore } from '@store/themeStore';
@@ -19,8 +17,6 @@ interface StepIndicatorProps {
   totalSteps: number;
   stepLabels?: string[];
 }
-
-const { width } = Dimensions.get('window');
 
 export const StepIndicator: React.FC<StepIndicatorProps> = ({
   currentStep,

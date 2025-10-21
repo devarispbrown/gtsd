@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useCallback } from 'react';
-import { Linking, Platform } from 'react-native';
+import { Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../stores/authStore';
 import type { RootNavigationProp } from '../types/navigation';
@@ -25,37 +25,6 @@ export const DeepLinkHandler: React.FC<DeepLinkHandlerProps> = ({ children }) =>
     setPendingDeepLink,
     clearPendingDeepLink,
   } = useAuthStore();
-
-  /**
-   * Process a deep link URL
-   * Handles authentication check and routing
-   */
-  const handleDeepLink = useCallback(
-    (url: string | null) => {
-      if (!url) return;
-
-      // Parse the URL to extract the path and query params
-      const { path, params } = parseDeepLink(url);
-
-      if (!path) {
-        return;
-      }
-
-      // Check authentication status
-      if (!isAuthenticated) {
-        // Store the deep link for after login
-        setPendingDeepLink(url);
-
-        // Navigate to Welcome screen for login
-        navigation.navigate('Welcome');
-        return;
-      }
-
-      // User is authenticated, handle the deep link
-      navigateToPath(path, params);
-    },
-    [isAuthenticated, navigation, setPendingDeepLink, navigateToPath]
-  );
 
   /**
    * Navigate to the appropriate screen based on the deep link path
@@ -105,6 +74,37 @@ export const DeepLinkHandler: React.FC<DeepLinkHandlerProps> = ({ children }) =>
       clearPendingDeepLink();
     },
     [navigation, clearPendingDeepLink]
+  );
+
+  /**
+   * Process a deep link URL
+   * Handles authentication check and routing
+   */
+  const handleDeepLink = useCallback(
+    (url: string | null) => {
+      if (!url) return;
+
+      // Parse the URL to extract the path and query params
+      const { path, params } = parseDeepLink(url);
+
+      if (!path) {
+        return;
+      }
+
+      // Check authentication status
+      if (!isAuthenticated) {
+        // Store the deep link for after login
+        setPendingDeepLink(url);
+
+        // Navigate to Welcome screen for login
+        navigation.navigate('Welcome');
+        return;
+      }
+
+      // User is authenticated, handle the deep link
+      navigateToPath(path, params);
+    },
+    [isAuthenticated, navigation, setPendingDeepLink, navigateToPath]
   );
 
   /**

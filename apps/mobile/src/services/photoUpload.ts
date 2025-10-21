@@ -3,66 +3,27 @@
  * Handles S3 presigned URL generation and direct upload with progress tracking
  */
 
-import apiClient, { apiRequest, handleApiError } from '../api/client';
-import { Platform } from 'react-native';
+import apiClient, { handleApiError } from '../api/client';
+import type {
+  PresignedUrlRequest,
+  PresignedUrlResponse,
+  PhotoMetadata,
+  PhotoConfirmRequest,
+  PhotoConfirmResponse,
+  Photo,
+  GetPhotosQuery,
+} from '@gtsd/shared-types';
 
-// Types
-export interface PresignedUrlRequest {
-  fileName: string;
-  contentType: string;
-  fileSize: number;
-}
-
-export interface PresignedUrlResponse {
-  uploadUrl: string;
-  fileKey: string;
-  expiresIn: number;
-}
-
-export interface PhotoMetadata {
-  fileName: string;
-  mimeType: string;
-  fileSize: number;
-  width?: number;
-  height?: number;
-  takenAt?: string;
-  taskId?: number;
-  evidenceType?: 'before' | 'during' | 'after';
-  description?: string;
-}
-
-export interface PhotoConfirmRequest {
-  fileKey: string;
-  metadata: PhotoMetadata;
-}
-
-export interface PhotoConfirmResponse {
-  id: number;
-  fileKey: string;
-  url: string;
-  thumbnailUrl?: string;
-  metadata: PhotoMetadata;
-  createdAt: string;
-}
-
-export interface Photo {
-  id: number;
-  fileKey: string;
-  url: string;
-  thumbnailUrl?: string;
-  metadata: PhotoMetadata;
-  taskId?: number;
-  userId: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface GetPhotosQuery {
-  taskId?: number;
-  evidenceType?: 'before' | 'during' | 'after';
-  limit?: number;
-  offset?: number;
-}
+// Re-export types for backward compatibility
+export type {
+  PresignedUrlRequest,
+  PresignedUrlResponse,
+  PhotoMetadata,
+  PhotoConfirmRequest,
+  PhotoConfirmResponse,
+  Photo,
+  GetPhotosQuery,
+};
 
 // Upload controller for cancellation
 export class UploadController {
@@ -120,21 +81,11 @@ export const photoUploadService = {
     controller?: UploadController
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      // Create form data for file upload
-      const formData = new FormData();
-
-      // Platform-specific file handling
-      const file: any = {
-        uri: Platform.OS === 'android' ? fileUri : fileUri.replace('file://', ''),
-        type: contentType,
-        name: 'photo.jpg',
-      };
-
       // For direct S3 upload, we need to use PUT with binary data
       // React Native's fetch doesn't support progress for uploads well
       // We'll use XMLHttpRequest for better progress tracking
 
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
 
         // Setup progress tracking

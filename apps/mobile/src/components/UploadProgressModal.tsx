@@ -20,7 +20,7 @@ interface UploadProgressModalProps {
   visible: boolean;
   fileName: string;
   progress: number;
-  status: 'uploading' | 'success' | 'error' | 'cancelled';
+  status: 'idle' | 'uploading' | 'success' | 'error' | 'cancelled';
   error?: string;
   onCancel?: () => void;
   onRetry?: () => void;
@@ -53,7 +53,7 @@ const UploadProgressModal: React.FC<UploadProgressModalProps> = ({
     if (status === 'success') {
       // Haptic feedback on success
       ReactNativeHapticFeedback.trigger(
-        ReactNativeHapticFeedback.HapticFeedbackTypes.notificationSuccess,
+        'notificationSuccess',
         {
           enableVibrateFallback: true,
           ignoreAndroidSystemSettings: false,
@@ -68,7 +68,7 @@ const UploadProgressModal: React.FC<UploadProgressModalProps> = ({
     } else if (status === 'error') {
       // Haptic feedback on error
       ReactNativeHapticFeedback.trigger(
-        ReactNativeHapticFeedback.HapticFeedbackTypes.notificationError,
+        'notificationError',
         {
           enableVibrateFallback: true,
           ignoreAndroidSystemSettings: false,

@@ -71,8 +71,9 @@ export const requestPhotoLibraryPermission = async (): Promise<boolean> => {
 
   try {
     // Android 13 (API 33) and above use different permissions
+    const version = typeof Platform.Version === 'number' ? Platform.Version : parseInt(String(Platform.Version), 10);
     const permission =
-      Platform.Version >= 33
+      version >= 33
         ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
         : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
 
@@ -121,8 +122,9 @@ export const checkPhotoLibraryPermission = async (): Promise<boolean> => {
   }
 
   try {
+    const version = typeof Platform.Version === 'number' ? Platform.Version : parseInt(String(Platform.Version), 10);
     const permission =
-      Platform.Version >= 33
+      version >= 33
         ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
         : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
 

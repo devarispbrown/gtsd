@@ -12,7 +12,7 @@ import RootNavigator from '@navigation/RootNavigator';
 import { DeepLinkHandler } from '@navigation/DeepLinkHandler';
 import { useThemeStore } from '@store/themeStore';
 import { navigationTheme } from '@constants/theme';
-import type { RootStackParamList } from '@types/navigation';
+import type { RootStackParamList } from './src/types/navigation';
 
 /**
  * Deep linking configuration for React Navigation

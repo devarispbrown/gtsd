@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -51,7 +51,7 @@ const partnerFormSchema = z.object({
 
 type PartnerFormData = z.infer<typeof partnerFormSchema>;
 
-export const PartnersScreen: React.FC<Props> = ({ navigation }) => {
+export function PartnersScreen({ navigation }: Props) {
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
   const {
@@ -63,7 +63,7 @@ export const PartnersScreen: React.FC<Props> = ({ navigation }) => {
     goToPreviousStep,
   } = useOnboarding();
 
-  const [partners, setPartners] = useState<AccountabilityPartner[]>(data.partners || []);
+  const [partners, setPartners] = useState<AccountabilityPartner[]>((data.partners as AccountabilityPartner[]) || []);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPartner, setEditingPartner] = useState<AccountabilityPartner | null>(null);
 
@@ -102,13 +102,13 @@ export const PartnersScreen: React.FC<Props> = ({ navigation }) => {
       name: partner.name,
       email: partner.email || '',
       phone: partner.phone || '',
-      relationship: partner.relationship,
+      relationship: partner.relationship as any,
     });
     setIsModalOpen(true);
   };
 
-  const handleDeletePartner = (partnerId: string) => {
-    setPartners(partners.filter(p => p.id !== partnerId));
+  const handleDeletePartner = (partnerId: string | number) => {
+    setPartners(partners.filter(p => String(p.id) !== String(partnerId)));
   };
 
   const onPartnerSubmit = (formData: PartnerFormData) => {
@@ -441,7 +441,7 @@ export const PartnersScreen: React.FC<Props> = ({ navigation }) => {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

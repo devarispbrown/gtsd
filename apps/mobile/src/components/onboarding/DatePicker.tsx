@@ -8,7 +8,7 @@ import {
   Modal,
 } from 'react-native';
 import DateTimePicker from 'react-native-date-picker';
-import { Controller, Control, FieldError } from 'react-hook-form';
+import { Controller, Control, FieldError, FieldErrorsImpl, Merge } from 'react-hook-form';
 import { colors } from '@constants/colors';
 import { useThemeStore } from '@store/themeStore';
 
@@ -16,7 +16,7 @@ interface DatePickerProps {
   control: Control<any>;
   name: string;
   label: string;
-  error?: FieldError;
+  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>>;
   required?: boolean;
   minimumDate?: Date;
   maximumDate?: Date;
@@ -172,7 +172,6 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                       minimumDate={minimumDate}
                       maximumDate={maximumDate}
                       theme={theme === 'system' ? 'auto' : theme}
-                      textColor={isDark ? colors.dark.text : colors.light.text}
                     />
                   </View>
                 </View>
@@ -190,20 +189,20 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                 mode="date"
                 minimumDate={minimumDate}
                 maximumDate={maximumDate}
-                theme={theme}
+                theme={theme === 'system' ? 'auto' : theme}
               />
             )}
           </>
         )}
       />
 
-      {error && (
+      {error?.message && (
         <Text
           style={styles.errorText}
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
         >
-          {error.message}
+          {String(error.message)}
         </Text>
       )}
     </View>

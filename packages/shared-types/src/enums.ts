@@ -74,10 +74,10 @@ export enum PrimaryGoal {
  */
 export enum ActivityLevel {
   Sedentary = 'sedentary',
-  Light = 'light',
-  Moderate = 'moderate',
-  Active = 'active',
+  LightlyActive = 'lightly_active',
+  ModeratelyActive = 'moderately_active',
   VeryActive = 'very_active',
+  ExtremelyActive = 'extremely_active',
 }
 
 /**

@@ -10,8 +10,8 @@ import Animated, {
   withSpring,
   withTiming,
   useSharedValue,
-  interpolate,
-  Extrapolate,
+  
+  
 } from 'react-native-reanimated';
 import { colors } from '../../constants/colors';
 

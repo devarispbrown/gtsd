@@ -8,7 +8,7 @@ import {
   AccessibilityInfo,
   Platform,
 } from 'react-native';
-import { Controller, Control, FieldError } from 'react-hook-form';
+import { Controller, Control, FieldError, FieldErrorsImpl, Merge } from 'react-hook-form';
 import { colors } from '@constants/colors';
 import { useThemeStore } from '@store/themeStore';
 
@@ -16,7 +16,7 @@ interface FormInputProps extends Omit<TextInputProps, 'onChangeText' | 'value'> 
   control: Control<any>;
   name: string;
   label: string;
-  error?: FieldError;
+  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>>;
   required?: boolean;
   helperText?: string;
   icon?: React.ReactNode;
@@ -90,8 +90,8 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
                   {
                     color: isDark ? colors.dark.text : colors.light.text,
                   },
-                  icon && styles.inputWithIcon,
-                ]}
+                  icon ? styles.inputWithIcon : undefined,
+                ].filter(Boolean)}
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
@@ -102,8 +102,7 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
                 accessibilityHint={helperText}
                 accessibilityRole="text"
                 accessibilityState={{
-                  required,
-                  invalid: !!error,
+                  disabled: textInputProps.editable === false,
                 }}
                 accessibilityValue={{ text: value }}
                 {...textInputProps}
@@ -128,13 +127,13 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
           </Text>
         )}
 
-        {error && (
+        {error?.message && (
           <Text
             style={styles.errorText}
             accessibilityRole="alert"
             accessibilityLiveRegion="polite"
           >
-            {error.message}
+            {String(error.message)}
           </Text>
         )}
       </View>

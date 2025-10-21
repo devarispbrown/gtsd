@@ -1,21 +1,20 @@
 import { create } from 'zustand';
 import {
   Evidence,
-  EvidenceType,
-  EvidenceData,
-  CreateEvidenceRequest,
   WorkoutMetrics,
   CardioMetrics,
   MealMetrics,
-  WeightMetrics,
+  WeightLogMetrics,
 } from '../types/tasks';
+import { EvidenceType, TaskStatus } from '@gtsd/shared-types';
+import type { EvidenceData } from '@gtsd/shared-types';
 import { taskApi } from '../api/taskService';
 import { useTodayStore } from './todayStore';
 
 interface EvidenceFormData {
   type: EvidenceType;
   text?: string;
-  metrics?: WorkoutMetrics | CardioMetrics | MealMetrics | WeightMetrics;
+  metrics?: WorkoutMetrics | CardioMetrics | MealMetrics | WeightLogMetrics;
   photoUri?: string;
   notes?: string;
 }
@@ -69,7 +68,7 @@ interface EvidenceState {
 }
 
 const initialFormData: EvidenceFormData = {
-  type: 'text_log',
+  type: EvidenceType.TextLog,
   text: '',
   metrics: undefined,
   photoUri: undefined,
@@ -186,16 +185,16 @@ export const useEvidenceStore = create<EvidenceState>((set, get) => ({
     const { formData } = get();
 
     switch (formData.type) {
-      case 'text_log':
+      case EvidenceType.TextLog:
         return !!formData.text && formData.text.trim().length > 0;
 
-      case 'metrics':
+      case EvidenceType.Metrics:
         if (!formData.metrics) return false;
 
         // Validate based on metric type
         if ('exercises' in formData.metrics) {
           // Workout metrics
-          return formData.metrics.exercises?.length > 0;
+          return (formData.metrics.exercises as any[])?.length > 0;
         } else if ('duration' in formData.metrics) {
           // Cardio metrics
           return formData.metrics.duration > 0;
@@ -208,7 +207,7 @@ export const useEvidenceStore = create<EvidenceState>((set, get) => ({
         }
         return false;
 
-      case 'photo_reference':
+      case EvidenceType.PhotoReference:
         return !!formData.photoUri;
 
       default:
@@ -222,19 +221,19 @@ export const useEvidenceStore = create<EvidenceState>((set, get) => ({
     const { formData } = get();
 
     switch (formData.type) {
-      case 'text_log':
+      case EvidenceType.TextLog:
         if (!formData.text || formData.text.trim().length === 0) {
           errors.push('Please enter some text');
         }
         break;
 
-      case 'metrics':
+      case EvidenceType.Metrics:
         if (!formData.metrics) {
           errors.push('Please enter metrics');
         }
         break;
 
-      case 'photo_reference':
+      case EvidenceType.PhotoReference:
         if (!formData.photoUri) {
           errors.push('Please select a photo');
         }
@@ -265,7 +264,7 @@ export const useEvidenceStore = create<EvidenceState>((set, get) => ({
     try {
       // Upload photo if needed
       let photoUrl: string | undefined;
-      if (formData.type === 'photo_reference' && formData.photoUri) {
+      if (formData.type === EvidenceType.PhotoReference && formData.photoUri) {
         photoUrl = await state.uploadPhoto() || undefined;
         if (!photoUrl) {
           set({ isSubmitting: false });
@@ -274,14 +273,17 @@ export const useEvidenceStore = create<EvidenceState>((set, get) => ({
       }
 
       // Prepare evidence data
-      const evidenceData: EvidenceData = {};
+      let evidenceData: EvidenceData;
 
-      if (formData.type === 'text_log') {
-        evidenceData.text = formData.text;
-      } else if (formData.type === 'metrics') {
-        evidenceData.metrics = formData.metrics;
-      } else if (formData.type === 'photo_reference') {
-        evidenceData.photoUrl = photoUrl;
+      if (formData.type === EvidenceType.TextLog) {
+        evidenceData = { text: formData.text || '' };
+      } else if (formData.type === EvidenceType.Metrics) {
+        evidenceData = { metrics: formData.metrics || {} };
+      } else if (formData.type === EvidenceType.PhotoReference) {
+        evidenceData = { photoUrl: photoUrl || '' };
+      } else {
+        // Default fallback
+        evidenceData = { text: '' };
       }
 
       // Submit evidence
@@ -294,7 +296,7 @@ export const useEvidenceStore = create<EvidenceState>((set, get) => ({
       if (result.data) {
         // Update task status in today store
         useTodayStore.getState().optimisticUpdateTask(currentTaskId, {
-          status: 'completed',
+          status: TaskStatus.Completed,
           completedAt: new Date().toISOString(),
         });
 
@@ -302,10 +304,12 @@ export const useEvidenceStore = create<EvidenceState>((set, get) => ({
         const newEvidence: Evidence = {
           id: Date.now(), // Temporary ID
           taskId: currentTaskId,
-          type: formData.type,
-          data: evidenceData,
+          userId: 0, // Will be set by server
+          evidenceType: formData.type,
           notes: formData.notes,
+          recordedAt: new Date().toISOString(),
           createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         };
 
         state.cacheEvidence(currentTaskId, newEvidence);

@@ -18,7 +18,7 @@ import { FormInput } from '../../components/onboarding/FormInput';
 
 type Props = NativeStackScreenProps<any, 'HealthMetrics'>;
 
-export const HealthMetricsScreen: React.FC<Props> = ({ navigation }) => {
+export function HealthMetricsScreen({ navigation }: Props) {
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
   const {
@@ -306,7 +306,7 @@ export const HealthMetricsScreen: React.FC<Props> = ({ navigation }) => {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

@@ -4,25 +4,19 @@
  */
 
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import tokenStorage from '../utils/secureStorage';
 import type {
-  ApiResponse,
-  ApiSuccessResponse,
-  ApiErrorResponse,
   GetTodayTasksQuery,
   GetTodayTasksResponse,
   CreateEvidenceRequest,
   CreateEvidenceResponse,
-  isApiSuccess,
 } from '@gtsd/shared-types';
 
-// API base configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
-const API_TIMEOUT = 30000; // 30 seconds
+import appConfig from '../config';
 
-// Storage keys
-const TOKEN_KEY = '@gtsd_auth_token';
-const REFRESH_TOKEN_KEY = '@gtsd_refresh_token';
+// API base configuration
+const API_BASE_URL = appConfig.apiUrl;
+const API_TIMEOUT = appConfig.apiTimeout;
 
 // Create axios instance with defaults
 const apiClient: AxiosInstance = axios.create({
@@ -38,7 +32,7 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   async (config) => {
     try {
-      const token = await AsyncStorage.getItem(TOKEN_KEY);
+      const token = await tokenStorage.getAccessToken();
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -63,25 +57,29 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+        const refreshToken = await tokenStorage.getRefreshToken();
         if (refreshToken) {
           // Attempt to refresh the token
           const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
             refreshToken,
           });
 
-          const { accessToken } = response.data;
-          await AsyncStorage.setItem(TOKEN_KEY, accessToken);
+          const { tokens } = response.data;
+          await tokenStorage.storeTokens({
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            expiresAt: Date.now() + (tokens.expiresIn * 1000),
+          });
 
           // Retry the original request with new token
           if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+            originalRequest.headers.Authorization = `Bearer ${tokens.accessToken}`;
           }
           return apiClient(originalRequest);
         }
       } catch (refreshError) {
         // Refresh failed, redirect to login
-        await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY]);
+        await tokenStorage.clearTokens();
         // Navigation to login will be handled by the app
       }
     }
@@ -127,24 +125,24 @@ export const handleApiError = (error: unknown): string => {
 };
 
 // Auth helper functions
-export const setAuthTokens = async (accessToken: string, refreshToken?: string) => {
-  await AsyncStorage.setItem(TOKEN_KEY, accessToken);
-  if (refreshToken) {
-    await AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-  }
+export const setAuthTokens = async (accessToken: string, refreshToken?: string, expiresIn?: number) => {
+  await tokenStorage.storeTokens({
+    accessToken,
+    refreshToken,
+    expiresAt: expiresIn ? Date.now() + (expiresIn * 1000) : undefined,
+  });
 };
 
 export const clearAuthTokens = async () => {
-  await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY]);
+  await tokenStorage.clearTokens();
 };
 
 export const getAuthToken = async (): Promise<string | null> => {
-  return AsyncStorage.getItem(TOKEN_KEY);
+  return tokenStorage.getAccessToken();
 };
 
 export const isAuthenticated = async (): Promise<boolean> => {
-  const token = await getAuthToken();
-  return !!token;
+  return tokenStorage.isAuthenticated();
 };
 
 // Generic request wrapper for better error handling

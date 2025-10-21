@@ -20,7 +20,7 @@ import {
   PhotoQuality,
 } from 'react-native-image-picker';
 import { useEvidenceStore } from '../../stores/evidenceStore';
-import { EvidenceType, TaskType, WorkoutMetrics, CardioMetrics, MealMetrics, WeightMetrics } from '../../types/tasks';
+import { EvidenceType, TaskType } from '../../types/tasks';
 import { colors } from '../../constants/colors';
 
 interface EvidenceFormProps {

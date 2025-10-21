@@ -13,7 +13,7 @@ import { useThemeStore } from '@store/themeStore';
 
 type Props = NativeStackScreenProps<any, 'HowItWorks'>;
 
-export const HowItWorksScreen: React.FC<Props> = ({ navigation }) => {
+export function HowItWorksScreen({ navigation }: Props) {
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
 
@@ -262,7 +262,7 @@ export const HowItWorksScreen: React.FC<Props> = ({ navigation }) => {
       </View>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
