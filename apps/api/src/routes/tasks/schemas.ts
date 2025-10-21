@@ -1,22 +1,15 @@
 import { z } from 'zod';
+import { TaskType, EvidenceType } from '@gtsd/shared-types';
 
 /**
  * Task type enum for validation
  */
-export const taskTypeEnum = z.enum([
-  'workout',
-  'supplement',
-  'meal',
-  'hydration',
-  'cardio',
-  'weight_log',
-  'progress_photo',
-]);
+export const taskTypeEnum = z.nativeEnum(TaskType);
 
 /**
  * Evidence type enum
  */
-export const evidenceTypeEnum = z.enum(['text_log', 'metrics', 'photo_reference']);
+export const evidenceTypeEnum = z.nativeEnum(EvidenceType);
 
 /**
  * Query parameters for GET /v1/tasks/today
@@ -97,5 +90,6 @@ export const createEvidenceSchema = z
  */
 export type GetTodayTasksQuery = z.infer<typeof getTodayTasksQuerySchema>;
 export type CreateEvidenceInput = z.infer<typeof createEvidenceSchema>;
-export type TaskType = z.infer<typeof taskTypeEnum>;
-export type EvidenceType = z.infer<typeof evidenceTypeEnum>;
+
+// Re-export TaskType and EvidenceType for local use
+export { TaskType, EvidenceType };

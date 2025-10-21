@@ -1,19 +1,24 @@
 import { z } from 'zod';
+import { PhotoConstraints, PhotoEvidenceType } from '@gtsd/shared-types';
 
 /**
  * Maximum file size for uploads (10MB)
  */
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+const MAX_FILE_SIZE = PhotoConstraints.MAX_FILE_SIZE;
 
 /**
  * Allowed MIME types for photo uploads
  */
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/heic'] as const;
+const ALLOWED_MIME_TYPES = PhotoConstraints.ALLOWED_MIME_TYPES;
 
 /**
  * Evidence types for photo-task linking
  */
-const EVIDENCE_TYPES = ['before', 'during', 'after'] as const;
+const EVIDENCE_TYPES = [
+  PhotoEvidenceType.Before,
+  PhotoEvidenceType.During,
+  PhotoEvidenceType.After,
+] as const;
 
 /**
  * Schema for presigned URL request

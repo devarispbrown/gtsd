@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import RedisStore from 'rate-limit-redis';
 import Redis from 'ioredis';
 import { AppError } from './error';
@@ -7,7 +7,7 @@ import { logger } from '../config/logger';
 // Create Redis client for rate limiting
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: 3,
-  enableOfflineQueue: false,
+  enableOfflineQueue: true, // Allow commands to queue while connecting
   lazyConnect: true,
   retryStrategy: (times: number) => {
     if (times > 3) {
@@ -99,8 +99,12 @@ export const perUserLimiter = rateLimit({
     prefix: 'rl:user:',
   }),
   keyGenerator: (req) => {
-    // Use userId if available (after auth middleware), otherwise fall back to IP
-    return req.userId?.toString() || req.ip || 'unknown';
+    // Use userId if available (after auth middleware), otherwise fall back to IP with IPv6 support
+    if (req.userId) {
+      return `user_${req.userId}`;
+    }
+    // Use ipKeyGenerator helper for proper IPv6 handling
+    return ipKeyGenerator(req);
   },
   handler: (_req, _res, _next, options) => {
     logger.warn({ limit: options.max, window: options.windowMs }, 'Per-user rate limit exceeded');

@@ -18,10 +18,14 @@ export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   email: text('email').notNull().unique(),
   name: text('name').notNull(),
+  passwordHash: text('password_hash'), // Nullable for backward compatibility
   phone: varchar('phone', { length: 20 }),
   smsOptIn: boolean('sms_opt_in').default(true),
   timezone: varchar('timezone', { length: 50 }).default('America/Los_Angeles'),
   isActive: boolean('is_active').default(true).notNull(),
+  emailVerified: boolean('email_verified').default(false).notNull(),
+  emailVerifiedAt: timestamp('email_verified_at'),
+  lastLoginAt: timestamp('last_login_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -181,6 +185,30 @@ export const smsMessageTypeEnum = pgEnum('sms_message_type', ['morning_nudge', '
 export const smsStatusEnum = pgEnum('sms_status', ['queued', 'sent', 'delivered', 'failed']);
 
 export const photoEvidenceTypeEnum = pgEnum('photo_evidence_type', ['before', 'during', 'after']);
+
+// ============================================================================
+// REFRESH TOKENS TABLE - Store refresh tokens for JWT auth
+// ============================================================================
+
+export const refreshTokens = pgTable(
+  'refresh_tokens',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    token: text('token').notNull().unique(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    replacedBy: text('replaced_by'), // Token that replaced this one (for refresh token rotation)
+  },
+  (table) => ({
+    userIdIdx: index('refresh_tokens_user_id_idx').on(table.userId),
+    tokenIdx: uniqueIndex('refresh_tokens_token_idx').on(table.token),
+    expiresAtIdx: index('refresh_tokens_expires_at_idx').on(table.expiresAt),
+  })
+);
 
 // ============================================================================
 // PLANS TABLE - Generated daily/weekly plans
@@ -527,6 +555,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   streaks: many(streaks),
   smsLogs: many(smsLogs),
   photos: many(photos),
+  refreshTokens: many(refreshTokens),
 }));
 
 export const plansRelations = relations(plans, ({ one, many }) => ({
@@ -591,6 +620,13 @@ export const taskEvidenceRelations = relations(taskEvidence, ({ one }) => ({
   photo: one(photos, {
     fields: [taskEvidence.photoId],
     references: [photos.id],
+  }),
+}));
+
+export const refreshTokensRelations = relations(refreshTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [refreshTokens.userId],
+    references: [users.id],
   }),
 }));
 
@@ -711,3 +747,13 @@ export type SelectTaskEvidence = InferSelectModel<typeof taskEvidence>;
  * Inferred type for inserting task evidence
  */
 export type InsertTaskEvidence = InferInsertModel<typeof taskEvidence>;
+
+/**
+ * Inferred type for selecting a refresh token
+ */
+export type SelectRefreshToken = InferSelectModel<typeof refreshTokens>;
+
+/**
+ * Inferred type for inserting a refresh token
+ */
+export type InsertRefreshToken = InferInsertModel<typeof refreshTokens>;

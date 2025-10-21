@@ -22,6 +22,41 @@
       "when": 1759203488577,
       "tag": "0002_fancy_toxin",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1760126456000,
+      "tag": "0003_today_checklist_feature",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1760207460000,
+      "tag": "0004_sms_nudges",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1760207461000,
+      "tag": "0005_optimize_sms_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1760298996000,
+      "tag": "0006_progress_photos",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1760996280000,
+      "tag": "0007_add_auth_fields",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import {
+  Gender,
+  ActivityLevel,
+  PrimaryGoal,
+  OnboardingValidation
+} from '@gtsd/shared-types';
 
 export const partnerSchema = z.object({
   name: z.string().trim().min(1, 'Partner name is required').max(100),
@@ -11,22 +17,22 @@ export const onboardingSchema = z
   .object({
     // Account basics
     dateOfBirth: z.string().datetime('Invalid date format'),
-    gender: z.enum(['male', 'female', 'other']),
+    gender: z.nativeEnum(Gender),
 
     // Goals
-    primaryGoal: z.enum(['lose_weight', 'gain_muscle', 'maintain', 'improve_health']),
-    targetWeight: z.number().positive('Target weight must be positive').max(500),
+    primaryGoal: z.nativeEnum(PrimaryGoal),
+    targetWeight: z.number().positive('Target weight must be positive').max(OnboardingValidation.MAX_WEIGHT),
     targetDate: z.string().datetime('Invalid date format'),
-    activityLevel: z.enum(['sedentary', 'lightly_active', 'moderately_active', 'very_active', 'extremely_active']),
+    activityLevel: z.nativeEnum(ActivityLevel),
 
     // Health metrics
-    currentWeight: z.number().positive('Current weight must be positive').max(500),
-    height: z.number().positive('Height must be positive').min(50).max(300),
+    currentWeight: z.number().positive('Current weight must be positive').max(OnboardingValidation.MAX_WEIGHT),
+    height: z.number().positive('Height must be positive').min(OnboardingValidation.MIN_HEIGHT).max(OnboardingValidation.MAX_HEIGHT),
 
     // Preferences
     dietaryPreferences: z.array(z.string()).default([]),
     allergies: z.array(z.string()).default([]),
-    mealsPerDay: z.number().int().min(1).max(10).default(3),
+    mealsPerDay: z.number().int().min(OnboardingValidation.MIN_MEALS_PER_DAY).max(OnboardingValidation.MAX_MEALS_PER_DAY).default(3),
 
     // Partners (optional)
     partners: z.array(partnerSchema).default([]),

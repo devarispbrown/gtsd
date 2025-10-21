@@ -190,6 +190,94 @@ describe('Progress Photos API', () => {
       expect(response.status).toBe(200);
       expect(response.body.data.fileKey).toContain('test-photo.jpg');
     });
+
+    it('should reject filename with path traversal', async () => {
+      const response = await request(app)
+        .post('/v1/progress/photo/presign')
+        .set('X-User-Id', testUserId.toString())
+        .send({
+          fileName: '../../../etc/passwd.jpg',
+          contentType: 'image/jpeg',
+          fileSize: 1024000,
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('path traversal');
+    });
+
+    it('should reject filename with null bytes', async () => {
+      const response = await request(app)
+        .post('/v1/progress/photo/presign')
+        .set('X-User-Id', testUserId.toString())
+        .send({
+          fileName: 'test\0.jpg',
+          contentType: 'image/jpeg',
+          fileSize: 1024000,
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('null bytes');
+    });
+
+    it('should reject filename with double extension', async () => {
+      const response = await request(app)
+        .post('/v1/progress/photo/presign')
+        .set('X-User-Id', testUserId.toString())
+        .send({
+          fileName: 'test.jpg.exe',
+          contentType: 'image/jpeg',
+          fileSize: 1024000,
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('multiple extensions');
+    });
+
+    it('should reject filename with invalid extension', async () => {
+      const response = await request(app)
+        .post('/v1/progress/photo/presign')
+        .set('X-User-Id', testUserId.toString())
+        .send({
+          fileName: 'test.exe',
+          contentType: 'image/jpeg',
+          fileSize: 1024000,
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('Invalid file extension');
+    });
+
+    it('should reject filename with path separators', async () => {
+      const response = await request(app)
+        .post('/v1/progress/photo/presign')
+        .set('X-User-Id', testUserId.toString())
+        .send({
+          fileName: 'path/to/file.jpg',
+          contentType: 'image/jpeg',
+          fileSize: 1024000,
+        });
+
+      // Should pass but only use the filename part
+      expect(response.status).toBe(200);
+      expect(response.body.data.fileKey).toContain('file.jpg');
+      expect(response.body.data.fileKey).not.toContain('path/to');
+    });
+
+    it('should reject filename with backslash path separators', async () => {
+      const response = await request(app)
+        .post('/v1/progress/photo/presign')
+        .set('X-User-Id', testUserId.toString())
+        .send({
+          fileName: 'path\\to\\file.jpg',
+          contentType: 'image/jpeg',
+          fileSize: 1024000,
+        });
+
+      // Should pass but only use the filename part
+      expect(response.status).toBe(200);
+      expect(response.body.data.fileKey).toContain('file.jpg');
+      expect(response.body.data.fileKey).not.toContain('path\\to');
+    });
   });
 
   describe('POST /v1/progress/photo/confirm', () => {
@@ -518,6 +606,73 @@ describe('Progress Photos API', () => {
 
       expect(response.status).toBe(400);
       expect(response.body.message).toContain('File size must be positive');
+    });
+
+    it('should reject fileKey that does not belong to authenticated user', async () => {
+      // Create another user
+      const [otherUser] = await db
+        .insert(users)
+        .values({
+          email: 'other-confirm-user@example.com',
+          name: 'Other Confirm User',
+        })
+        .returning();
+
+      // Generate presigned URL for other user
+      const otherPresignResponse = await request(app)
+        .post('/v1/progress/photo/presign')
+        .set('X-User-Id', otherUser.id.toString())
+        .send({
+          fileName: 'other-user-photo.jpg',
+          contentType: 'image/jpeg',
+          fileSize: 2048576,
+        });
+
+      const otherUserFileKey = otherPresignResponse.body.data.fileKey;
+
+      // Try to confirm with different user
+      const response = await request(app)
+        .post('/v1/progress/photo/confirm')
+        .set('X-User-Id', testUserId.toString())
+        .send({
+          fileKey: otherUserFileKey,
+          fileSize: 2048576,
+          contentType: 'image/jpeg',
+        });
+
+      expect(response.status).toBe(403);
+      expect(response.body.message).toContain('does not belong to authenticated user');
+
+      // Clean up
+      await db.delete(users).where(eq(users.id, otherUser.id));
+    });
+
+    it('should reject malformed fileKey', async () => {
+      const response = await request(app)
+        .post('/v1/progress/photo/confirm')
+        .set('X-User-Id', testUserId.toString())
+        .send({
+          fileKey: 'malicious/../../etc/passwd',
+          fileSize: 2048576,
+          contentType: 'image/jpeg',
+        });
+
+      expect(response.status).toBe(403);
+      expect(response.body.message).toContain('does not belong to authenticated user');
+    });
+
+    it('should reject fileKey with wrong user ID', async () => {
+      const response = await request(app)
+        .post('/v1/progress/photo/confirm')
+        .set('X-User-Id', testUserId.toString())
+        .send({
+          fileKey: `progress-photos/99999/uuid-test.jpg`,
+          fileSize: 2048576,
+          contentType: 'image/jpeg',
+        });
+
+      expect(response.status).toBe(403);
+      expect(response.body.message).toContain('does not belong to authenticated user');
     });
   });
 

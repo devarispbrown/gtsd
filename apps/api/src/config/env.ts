@@ -26,6 +26,9 @@ const envSchema = z.object({
   TWILIO_ACCOUNT_SID: z.string().default(isTest ? 'test_account_sid' : ''),
   TWILIO_AUTH_TOKEN: z.string().default(isTest ? 'test_auth_token' : ''),
   TWILIO_PHONE_NUMBER: z.string().default(isTest ? '+15551234567' : ''),
+  // JWT Authentication
+  JWT_SECRET: z.string().min(32).default(isTest ? 'test-secret-key-at-least-32-characters-long-for-testing' : ''),
+  JWT_REFRESH_SECRET: z.string().min(32).default(isTest ? 'test-refresh-secret-key-at-least-32-chars-long' : ''),
 });
 
 export type Env = z.infer<typeof envSchema>;

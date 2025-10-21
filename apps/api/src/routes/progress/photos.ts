@@ -41,6 +41,19 @@ const presignRateLimiter = rateLimit({
 });
 
 /**
+ * Rate limiter for photo confirmation
+ * 30 requests per minute per user (slightly higher than presign to allow for retries)
+ */
+const confirmRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30,
+  message: 'Too many photo confirmation requests, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => `confirm_${req.userId || 'anonymous'}`,
+});
+
+/**
  * POST /v1/progress/photo/presign
  * Generate presigned URL for photo upload
  *
@@ -155,10 +168,13 @@ router.post(
  * Returns:
  * - photoId: number
  * - downloadUrl: string (presigned download URL)
+ *
+ * Rate limit: 30 requests/min
  */
 router.post(
   '/photo/confirm',
   requireAuth,
+  confirmRateLimiter,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const span = tracer.startSpan('POST /v1/progress/photo/confirm');
 
@@ -181,8 +197,26 @@ router.post(
         'file.content_type': validatedInput.contentType,
       });
 
-      // Verify file exists in S3 before creating database record
-      await s3Service.verifyObjectExists(validatedInput.fileKey);
+      // SECURITY: Validate file key belongs to authenticated user
+      // Expected format: progress-photos/{userId}/{uuid}-{filename}
+      const fileKeyPattern = new RegExp(`^progress-photos/${req.userId}/[a-f0-9-]+-.+$`);
+      if (!fileKeyPattern.test(validatedInput.fileKey)) {
+        logger.warn(
+          {
+            userId: req.userId,
+            fileKey: validatedInput.fileKey,
+          },
+          'File key ownership validation failed'
+        );
+        throw new AppError(403, 'Invalid file key: does not belong to authenticated user');
+      }
+
+      // Verify file exists in S3 and validate content-type and size
+      await s3Service.verifyObjectExists(
+        validatedInput.fileKey,
+        validatedInput.contentType,
+        validatedInput.fileSize
+      );
 
       // Check if photo already exists with same fileKey (idempotency)
       const [existingPhoto] = await db

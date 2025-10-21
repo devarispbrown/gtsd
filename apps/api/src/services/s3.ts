@@ -27,6 +27,15 @@ interface PresignedUploadResult {
 }
 
 /**
+ * Result of file verification
+ */
+interface VerifyFileResult {
+  exists: boolean;
+  contentType: string;
+  contentLength: number;
+}
+
+/**
  * Allowed MIME types for photo uploads
  */
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/heic'] as const;
@@ -90,15 +99,46 @@ export class S3Service {
 
   /**
    * Sanitizes a file name by removing/replacing special characters
+   * Prevents path traversal, null bytes, and malicious patterns
    * @param fileName - Original file name
    * @returns Sanitized file name
+   * @throws AppError if filename is invalid
    */
   private sanitizeFileName(fileName: string): string {
-    // Remove any path components
-    const baseName = fileName.split('/').pop() || fileName;
+    // Check for null bytes
+    if (fileName.includes('\0')) {
+      throw new AppError(400, 'Invalid filename: contains null bytes');
+    }
+
+    // Remove any path components (handles both / and \)
+    const baseName = fileName.split(/[/\\]/).pop() || fileName;
+
+    // Check for path traversal attempts
+    if (baseName.includes('..')) {
+      throw new AppError(400, 'Invalid filename: path traversal detected');
+    }
+
+    // Validate file extension is safe
+    const extension = baseName.toLowerCase().split('.').pop() || '';
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'heic'];
+
+    if (!allowedExtensions.includes(extension)) {
+      throw new AppError(400, `Invalid file extension: .${extension}. Allowed: ${allowedExtensions.join(', ')}`);
+    }
+
+    // Check for double extensions (e.g., .jpg.exe)
+    const parts = baseName.split('.');
+    if (parts.length > 2) {
+      throw new AppError(400, 'Invalid filename: multiple extensions detected');
+    }
 
     // Replace special characters with underscores, keep dots for extensions
     const sanitized = baseName.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+    // Ensure filename is not empty after sanitization
+    if (!sanitized || sanitized === '.' || sanitized === '..') {
+      throw new AppError(400, 'Invalid filename: empty or invalid after sanitization');
+    }
 
     // Limit length to 255 characters
     return sanitized.substring(0, 255);
@@ -276,13 +316,20 @@ export class S3Service {
   }
 
   /**
-   * Verifies if an object exists in S3
+   * Verifies if an object exists in S3 and returns its metadata
    * @param fileKey - S3 object key to verify
-   * @returns True if object exists
+   * @param expectedContentType - Expected MIME type (optional validation)
+   * @param expectedSize - Expected file size in bytes (optional validation, allows 1% tolerance)
+   * @returns Object metadata including content type and size
    * @throws AppError(404) if object does not exist
+   * @throws AppError(400) if content type or size doesn't match
    * @throws AppError(500) for other errors
    */
-  async verifyObjectExists(fileKey: string): Promise<boolean> {
+  async verifyObjectExists(
+    fileKey: string,
+    expectedContentType?: string,
+    expectedSize?: number
+  ): Promise<VerifyFileResult> {
     const span = tracer.startSpan('s3.verifyObjectExists');
 
     try {
@@ -294,6 +341,8 @@ export class S3Service {
       logger.debug(
         {
           fileKey,
+          expectedContentType,
+          expectedSize,
         },
         'Verifying object exists in S3'
       );
@@ -305,19 +354,84 @@ export class S3Service {
       });
 
       // Execute head request
-      await this.client.send(command);
+      const response = await this.client.send(command);
+
+      // Extract metadata
+      const actualContentType = response.ContentType || 'unknown';
+      const actualSize = response.ContentLength || 0;
+
+      // Validate content type if expected
+      if (expectedContentType && actualContentType !== expectedContentType) {
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: 'Content type mismatch',
+        });
+
+        logger.warn(
+          {
+            fileKey,
+            expectedContentType,
+            actualContentType,
+          },
+          'Content type mismatch in S3 file'
+        );
+
+        throw new AppError(
+          400,
+          `Content type mismatch: expected ${expectedContentType}, got ${actualContentType}`
+        );
+      }
+
+      // Validate file size if expected (allow 1% tolerance for encoding differences)
+      if (expectedSize) {
+        const sizeTolerance = Math.max(1024, expectedSize * 0.01); // 1% or 1KB, whichever is larger
+        const sizeDiff = Math.abs(actualSize - expectedSize);
+
+        if (sizeDiff > sizeTolerance) {
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: 'File size mismatch',
+          });
+
+          logger.warn(
+            {
+              fileKey,
+              expectedSize,
+              actualSize,
+              sizeDiff,
+            },
+            'File size mismatch in S3 file'
+          );
+
+          throw new AppError(
+            400,
+            `File size mismatch: expected ${expectedSize} bytes, got ${actualSize} bytes`
+          );
+        }
+      }
 
       span.setStatus({ code: SpanStatusCode.OK });
 
       logger.debug(
         {
           fileKey,
+          contentType: actualContentType,
+          contentLength: actualSize,
         },
-        'Object exists in S3'
+        'Object verified in S3'
       );
 
-      return true;
+      return {
+        exists: true,
+        contentType: actualContentType,
+        contentLength: actualSize,
+      };
     } catch (error: any) {
+      // Re-throw AppErrors as-is
+      if (error instanceof AppError) {
+        throw error;
+      }
+
       // Check if it's a not found error
       if (error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
         span.setStatus({
