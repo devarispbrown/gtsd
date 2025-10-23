@@ -9,7 +9,6 @@ import Animated, {
   withSequence,
   runOnJS,
   Easing,
-  FadeOut,
 } from 'react-native-reanimated';
 
 interface ConfettiPiece {
@@ -96,14 +95,7 @@ const ConfettiPieceComponent: React.FC<{
     );
 
     // Scale animation
-    scale.value = withRepeat(
-      withSequence(
-        withSpring(1.2),
-        withSpring(0.8),
-        withSpring(1)
-      ),
-      -1
-    );
+    scale.value = withRepeat(withSequence(withSpring(1.2), withSpring(0.8), withSpring(1)), -1);
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -184,7 +176,7 @@ export const ConfettiAnimation: React.FC<ConfettiAnimationProps> = ({
 
   return (
     <View style={styles.container} pointerEvents="none">
-      {confettiPieces.map((piece) => (
+      {confettiPieces.map(piece => (
         <ConfettiPieceComponent
           key={piece.id}
           piece={piece}

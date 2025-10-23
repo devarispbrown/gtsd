@@ -24,14 +24,9 @@ import { DailyComplianceStreak } from '@gtsd/shared-types';
 interface StreakBarProps {
   streak: DailyComplianceStreak | null;
   isLoading?: boolean;
-  onRefresh?: () => void;
 }
 
-export const StreakBar: React.FC<StreakBarProps> = ({
-  streak,
-  isLoading,
-  onRefresh,
-}) => {
+export const StreakBar: React.FC<StreakBarProps> = ({ streak, isLoading }) => {
   const isDarkMode = useColorScheme() === 'dark';
   const theme = isDarkMode ? colors.dark : colors.light;
   const [showDetails, setShowDetails] = React.useState(false);
@@ -51,10 +46,7 @@ export const StreakBar: React.FC<StreakBarProps> = ({
 
       // Pulse animation for milestones
       if (streak.currentStreak % 7 === 0 || streak.currentStreak === streak.longestStreak) {
-        scale.value = withSequence(
-          withSpring(1.1),
-          withSpring(1)
-        );
+        scale.value = withSequence(withSpring(1.1), withSpring(1));
       }
     }
   }, [streak?.currentStreak]);
@@ -83,7 +75,7 @@ export const StreakBar: React.FC<StreakBarProps> = ({
     if (count === 0) return 'Start your streak today!';
     if (count === 1) return 'Great start! Keep it up!';
     if (count < 3) return 'Building momentum!';
-    if (count < 7) return 'You\'re on fire!';
+    if (count < 7) return "You're on fire!";
     if (count < 14) return 'Unstoppable force!';
     if (count < 30) return 'Legendary dedication!';
     if (count < 60) return 'Master of consistency!';
@@ -109,30 +101,18 @@ export const StreakBar: React.FC<StreakBarProps> = ({
   const flameStyle = useAnimatedStyle(() => ({
     transform: [
       {
-        scale: interpolate(
-          flameAnimation.value,
-          [0, 0.5, 1],
-          [1, 1.2, 1]
-        ),
+        scale: interpolate(flameAnimation.value, [0, 0.5, 1], [1, 1.2, 1]),
       },
     ],
   }));
 
-  if (isLoading) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.card }]}>
-        <View style={styles.loadingContainer}>
-          <View style={[styles.loadingSkeleton, { backgroundColor: theme.separator }]} />
-        </View>
-      </View>
-    );
-  }
-
+  // Calculate streak values before styles (needed for styling)
   const currentStreak = streak?.currentStreak || 0;
   const longestStreak = streak?.longestStreak || 0;
   const totalDays = streak?.totalCompliantDays || 0;
   const isNewRecord = currentStreak > 0 && currentStreak >= longestStreak;
 
+  // Define styles (must be after currentStreak calculation)
   const styles = StyleSheet.create({
     container: {
       paddingHorizontal: 20,
@@ -285,24 +265,29 @@ export const StreakBar: React.FC<StreakBarProps> = ({
     },
   });
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.card }]}>
+        <View style={styles.loadingContainer}>
+          <View style={[styles.loadingSkeleton, { backgroundColor: theme.separator }]} />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <>
-      <Animated.View
-        entering={FadeInUp.delay(100)}
-        style={[styles.container, animatedStyle]}
-      >
+      <Animated.View entering={FadeInUp.delay(100)} style={[styles.container, animatedStyle]}>
         <TouchableOpacity
           onPress={handlePress}
           style={styles.streakButton}
           activeOpacity={0.8}
           accessibilityRole="button"
-          accessibilityLabel={`Current streak: ${currentStreak} days. Tap for details`}
-        >
+          accessibilityLabel={`Current streak: ${currentStreak} days. Tap for details`}>
           <View style={styles.streakContent}>
             <Animated.View style={[styles.emojiContainer, flameStyle]}>
-              <Text style={styles.streakEmoji}>
-                {getStreakEmoji(currentStreak)}
-              </Text>
+              <Text style={styles.streakEmoji}>{getStreakEmoji(currentStreak)}</Text>
             </Animated.View>
 
             <View style={styles.streakInfo}>
@@ -317,9 +302,7 @@ export const StreakBar: React.FC<StreakBarProps> = ({
                   </View>
                 )}
               </View>
-              <Text style={styles.streakMessage}>
-                {getStreakMessage(currentStreak)}
-              </Text>
+              <Text style={styles.streakMessage}>{getStreakMessage(currentStreak)}</Text>
             </View>
           </View>
 
@@ -329,26 +312,12 @@ export const StreakBar: React.FC<StreakBarProps> = ({
         </TouchableOpacity>
       </Animated.View>
 
-      <Modal
-        visible={showDetails}
-        transparent
-        animationType="fade"
-        onRequestClose={handleClose}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={handleClose}
-        >
+      <Modal visible={showDetails} transparent animationType="fade" onRequestClose={handleClose}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={handleClose}>
           <TouchableOpacity activeOpacity={1}>
-            <Animated.View
-              entering={FadeInUp.springify()}
-              style={styles.modalContent}
-            >
+            <Animated.View entering={FadeInUp.springify()} style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalEmoji}>
-                  {getStreakEmoji(currentStreak)}
-                </Text>
+                <Text style={styles.modalEmoji}>{getStreakEmoji(currentStreak)}</Text>
                 <Text style={styles.modalTitle}>Streak Statistics</Text>
               </View>
 
@@ -387,20 +356,19 @@ export const StreakBar: React.FC<StreakBarProps> = ({
               <View style={styles.motivationalMessage}>
                 <Text style={styles.motivationalText}>
                   {currentStreak === 0
-                    ? "Every champion was once a beginner. Start your streak today!"
+                    ? 'Every champion was once a beginner. Start your streak today!'
                     : currentStreak < 7
-                    ? "You're building something great! Keep pushing forward."
-                    : currentStreak < 30
-                    ? "Your consistency is inspiring! You're becoming unstoppable."
-                    : "You're a true GTSD warrior! Your dedication is legendary."}
+                      ? "You're building something great! Keep pushing forward."
+                      : currentStreak < 30
+                        ? "Your consistency is inspiring! You're becoming unstoppable."
+                        : "You're a true GTSD warrior! Your dedication is legendary."}
                 </Text>
               </View>
 
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={handleClose}
-                activeOpacity={0.8}
-              >
+                activeOpacity={0.8}>
                 <Text style={styles.closeButtonText}>Close</Text>
               </TouchableOpacity>
             </Animated.View>

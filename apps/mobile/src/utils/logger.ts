@@ -8,7 +8,7 @@
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 interface LogContext {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 class Logger {
@@ -52,7 +52,7 @@ class Logger {
     console.error(`[ERROR] ${message}`, {
       error: errorMessage,
       stack: errorStack,
-      ...context
+      ...context,
     });
 
     // Report errors to crash analytics in production
@@ -60,7 +60,7 @@ class Logger {
       this.reportToMonitoring('error', message, {
         error: errorMessage,
         stack: errorStack,
-        ...context
+        ...context,
       });
     }
   }
@@ -80,7 +80,7 @@ class Logger {
       this.warn(`${message} - Retrying (${retriesLeft} attempts left)`, {
         error: errorMessage,
         retriesLeft,
-        ...context
+        ...context,
       });
     } else {
       this.error(`${message} - All retries exhausted`, error, context);
@@ -96,10 +96,11 @@ class Logger {
     }
 
     // You could send performance metrics to analytics
-    if (duration > 3000) { // Log slow operations
+    if (duration > 3000) {
+      // Log slow operations
       this.warn(`Slow operation: ${operation}`, {
         duration,
-        ...context
+        ...context,
       });
     }
   }
@@ -109,14 +110,14 @@ class Logger {
    * In production, this would integrate with services like Sentry, Bugsnag, etc.
    */
   private reportToMonitoring(
-    level: 'warning' | 'error',
-    message: string,
-    context?: LogContext
+    _level: 'warning' | 'error',
+    _message: string,
+    _context?: LogContext
   ): void {
     // TODO: Integrate with crash reporting service
     // Example with Sentry:
-    // Sentry.captureMessage(message, level);
-    // Sentry.addBreadcrumb({ message, level, data: context });
+    // Sentry.captureMessage(_message, _level);
+    // Sentry.addBreadcrumb({ message: _message, level: _level, data: _context });
   }
 }
 

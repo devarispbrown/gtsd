@@ -111,16 +111,12 @@ export const useStreaksStore = create<StreaksStore>()(
       const now = Date.now();
 
       // Use cache if available and fresh
-      if (
-        state.streak &&
-        state.lastFetchTime &&
-        now - state.lastFetchTime < CACHE_DURATION
-      ) {
+      if (state.streak && state.lastFetchTime && now - state.lastFetchTime < CACHE_DURATION) {
         logger.debug('Using cached streak data');
         return;
       }
 
-      set((draft) => {
+      set(draft => {
         draft.isLoading = !state.streak;
         draft.error = null;
       });
@@ -129,7 +125,7 @@ export const useStreaksStore = create<StreaksStore>()(
         const response = await streakAndBadgeApi.streaks.getMyStreak();
 
         if (response.data) {
-          set((draft) => {
+          set(draft => {
             draft.streak = response.data!.streak;
             draft.todayCompliance = response.data!.todayCompliance;
             draft.canIncrementToday = response.data!.canIncrementToday;
@@ -138,7 +134,7 @@ export const useStreaksStore = create<StreaksStore>()(
           });
           logger.info('Streak data fetched successfully');
         } else if (response.error) {
-          set((draft) => {
+          set(draft => {
             draft.error = response.error!;
             draft.isLoading = false;
           });
@@ -146,7 +142,7 @@ export const useStreaksStore = create<StreaksStore>()(
           get().triggerErrorHaptic();
         }
       } catch (error) {
-        set((draft) => {
+        set(draft => {
           draft.error = 'Failed to fetch streak data';
           draft.isLoading = false;
         });
@@ -156,7 +152,7 @@ export const useStreaksStore = create<StreaksStore>()(
     },
 
     refreshStreak: async () => {
-      set((draft) => {
+      set(draft => {
         draft.isRefreshing = true;
         draft.error = null;
       });
@@ -165,7 +161,7 @@ export const useStreaksStore = create<StreaksStore>()(
         const response = await streakAndBadgeApi.streaks.getMyStreak();
 
         if (response.data) {
-          set((draft) => {
+          set(draft => {
             draft.streak = response.data!.streak;
             draft.todayCompliance = response.data!.todayCompliance;
             draft.canIncrementToday = response.data!.canIncrementToday;
@@ -174,7 +170,7 @@ export const useStreaksStore = create<StreaksStore>()(
           });
           logger.info('Streak data refreshed successfully');
         } else if (response.error) {
-          set((draft) => {
+          set(draft => {
             draft.error = response.error!;
             draft.isRefreshing = false;
           });
@@ -182,7 +178,7 @@ export const useStreaksStore = create<StreaksStore>()(
           get().triggerErrorHaptic();
         }
       } catch (error) {
-        set((draft) => {
+        set(draft => {
           draft.error = 'Failed to refresh streak data';
           draft.isRefreshing = false;
         });
@@ -192,7 +188,7 @@ export const useStreaksStore = create<StreaksStore>()(
     },
 
     checkCompliance: async (date?: string) => {
-      set((draft) => {
+      set(draft => {
         draft.isCheckingCompliance = true;
         draft.error = null;
         draft.badgeAwardError = null;
@@ -227,10 +223,12 @@ export const useStreaksStore = create<StreaksStore>()(
               } as UserBadgeWithMetadata;
             });
 
-            set((draft) => {
+            set(draft => {
               // Add optimistic badges if they don't already exist
               optimisticBadges.forEach(newBadge => {
-                const exists = draft.badges.some(b => b.badgeType === newBadge.badgeType);
+                const exists = draft.badges.some(
+                  (b: UserBadgeWithMetadata) => b.badgeType === newBadge.badgeType
+                );
                 if (!exists) {
                   draft.badges.unshift(newBadge);
                 }
@@ -250,7 +248,7 @@ export const useStreaksStore = create<StreaksStore>()(
             } catch (error) {
               // If badge fetch fails, show user-friendly error but keep optimistic update
               logger.error('Failed to refresh badges after award', error);
-              set((draft) => {
+              set(draft => {
                 draft.badgeAwardError = 'Badge awarded! Pull to refresh to sync with server.';
               });
 
@@ -262,7 +260,7 @@ export const useStreaksStore = create<StreaksStore>()(
             }
           }
 
-          set((draft) => {
+          set(draft => {
             draft.todayCompliance = response.data!.compliance;
             draft.isCheckingCompliance = false;
           });
@@ -270,10 +268,10 @@ export const useStreaksStore = create<StreaksStore>()(
           logger.info('Compliance checked successfully', {
             date,
             streakUpdated: response.data.streakUpdate,
-            badgesAwarded: response.data.badgesAwarded.newBadgesAwarded.length
+            badgesAwarded: response.data.badgesAwarded.newBadgesAwarded.length,
           });
         } else if (response.error) {
-          set((draft) => {
+          set(draft => {
             draft.error = response.error!;
             draft.isCheckingCompliance = false;
           });
@@ -281,7 +279,7 @@ export const useStreaksStore = create<StreaksStore>()(
           get().triggerErrorHaptic();
         }
       } catch (error) {
-        set((draft) => {
+        set(draft => {
           draft.error = 'Failed to check compliance. Please try again.';
           draft.isCheckingCompliance = false;
         });
@@ -291,7 +289,7 @@ export const useStreaksStore = create<StreaksStore>()(
     },
 
     updateStreak: (streak: DailyComplianceStreak) => {
-      set((draft) => {
+      set(draft => {
         draft.streak = streak;
         draft.lastFetchTime = Date.now();
       });
@@ -302,7 +300,7 @@ export const useStreaksStore = create<StreaksStore>()(
     fetchUserBadges: async () => {
       const state = get();
 
-      set((draft) => {
+      set(draft => {
         draft.isFetchingBadges = true;
         draft.isLoading = state.badges.length === 0;
         draft.error = null;
@@ -313,20 +311,20 @@ export const useStreaksStore = create<StreaksStore>()(
         const response = await streakAndBadgeApi.badges.getMyBadges();
 
         if (response.data) {
-          set((draft) => {
+          set(draft => {
             draft.badges = response.data!.badges;
             draft.isFetchingBadges = false;
             draft.isLoading = false;
             draft.retryCount = 0; // Reset retry count on success
           });
           logger.info('User badges fetched successfully', {
-            count: response.data.badges.length
+            count: response.data.badges.length,
           });
         } else if (response.error) {
           throw new Error(response.error);
         }
       } catch (error) {
-        set((draft) => {
+        set(draft => {
           draft.error = 'Failed to fetch badges';
           draft.isFetchingBadges = false;
           draft.isLoading = false;
@@ -343,18 +341,15 @@ export const useStreaksStore = create<StreaksStore>()(
         await get().fetchUserBadges();
         const duration = Date.now() - startTime;
         logger.performance('fetchUserBadgesWithRetry', duration, {
-          retriesUsed: BADGE_FETCH_MAX_RETRIES - retries
+          retriesUsed: BADGE_FETCH_MAX_RETRIES - retries,
         });
       } catch (error) {
         if (retries > 0) {
-          logger.networkError(
-            'Badge fetch failed',
-            error,
-            retries - 1,
-            { attempt: BADGE_FETCH_MAX_RETRIES - retries + 1 }
-          );
+          logger.networkError('Badge fetch failed', error, retries - 1, {
+            attempt: BADGE_FETCH_MAX_RETRIES - retries + 1,
+          });
 
-          set((draft) => {
+          set(draft => {
             draft.retryCount = BADGE_FETCH_MAX_RETRIES - retries + 1;
           });
 
@@ -367,10 +362,10 @@ export const useStreaksStore = create<StreaksStore>()(
 
         // All retries exhausted
         logger.error('Failed to fetch badges after all retries', error, {
-          maxRetries: BADGE_FETCH_MAX_RETRIES
+          maxRetries: BADGE_FETCH_MAX_RETRIES,
         });
 
-        set((draft) => {
+        set(draft => {
           draft.retryCount = 0;
         });
 
@@ -379,7 +374,7 @@ export const useStreaksStore = create<StreaksStore>()(
     },
 
     refreshBadges: async () => {
-      set((draft) => {
+      set(draft => {
         draft.isRefreshing = true;
         draft.error = null;
         draft.badgeAwardError = null;
@@ -387,12 +382,12 @@ export const useStreaksStore = create<StreaksStore>()(
 
       try {
         await get().fetchUserBadgesWithRetry();
-        set((draft) => {
+        set(draft => {
           draft.isRefreshing = false;
         });
         logger.info('Badges refreshed successfully');
       } catch (error) {
-        set((draft) => {
+        set(draft => {
           draft.error = 'Failed to refresh badges. Pull down to try again.';
           draft.isRefreshing = false;
         });
@@ -417,9 +412,9 @@ export const useStreaksStore = create<StreaksStore>()(
         metadata: badgeMetadata,
       };
 
-      set((draft) => {
+      set(draft => {
         // Check if badge already exists
-        const exists = draft.badges.some((b) => b.badgeType === badgeType);
+        const exists = draft.badges.some((b: UserBadgeWithMetadata) => b.badgeType === badgeType);
         if (!exists) {
           draft.badges.push(newBadge);
           logger.info('Badge awarded locally', { badgeType });
@@ -436,7 +431,7 @@ export const useStreaksStore = create<StreaksStore>()(
         return;
       }
 
-      set((draft) => {
+      set(draft => {
         draft.newBadgeAwarded = badgeMetadata;
       });
 
@@ -444,7 +439,7 @@ export const useStreaksStore = create<StreaksStore>()(
     },
 
     clearBadgeAward: () => {
-      set((draft) => {
+      set(draft => {
         draft.newBadgeAwarded = null;
         draft.badgeAwardError = null;
       });
@@ -465,7 +460,7 @@ export const useStreaksStore = create<StreaksStore>()(
     },
 
     initializeStreaksAndBadges: async () => {
-      set((draft) => {
+      set(draft => {
         draft.isLoading = true;
         draft.error = null;
         draft.badgeAwardError = null;
@@ -480,7 +475,7 @@ export const useStreaksStore = create<StreaksStore>()(
           streakAndBadgeApi.badges.getMyBadges(),
         ]);
 
-        set((draft) => {
+        set(draft => {
           if (streakResponse.data) {
             draft.streak = streakResponse.data.streak;
             draft.todayCompliance = streakResponse.data.todayCompliance;
@@ -513,7 +508,7 @@ export const useStreaksStore = create<StreaksStore>()(
           logger.info('Streaks and badges initialized successfully');
         }
       } catch (error) {
-        set((draft) => {
+        set(draft => {
           draft.error = 'Failed to initialize streaks and badges. Please refresh to try again.';
           draft.isLoading = false;
         });
@@ -524,21 +519,21 @@ export const useStreaksStore = create<StreaksStore>()(
 
     // Utilities
     clearError: () => {
-      set((draft) => {
+      set(draft => {
         draft.error = null;
       });
       logger.debug('Error cleared');
     },
 
     clearBadgeAwardError: () => {
-      set((draft) => {
+      set(draft => {
         draft.badgeAwardError = null;
       });
       logger.debug('Badge award error cleared');
     },
 
     reset: () => {
-      set((draft) => {
+      set(draft => {
         draft.streak = null;
         draft.todayCompliance = null;
         draft.canIncrementToday = false;

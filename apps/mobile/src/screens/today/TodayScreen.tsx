@@ -106,8 +106,8 @@ export const TodayScreen: React.FC = () => {
         if (reminder === 'pending') {
           // Find first incomplete task
           const firstIncompleteTask = taskGroups
-            .flatMap((group) => group.tasks)
-            .find((task) => !task.completedAt);
+            .flatMap(group => group.tasks)
+            .find(task => !task.completedAt);
 
           if (firstIncompleteTask) {
             // Show notification about pending tasks
@@ -188,7 +188,7 @@ export const TodayScreen: React.FC = () => {
 
   // Handle navigation to badges
   const handleNavigateToBadges = useCallback(() => {
-    // @ts-ignore - Navigation typing will be updated in navigation step
+    // @ts-expect-error - Navigation typing will be updated in navigation step
     navigation.navigate('Badges');
   }, [navigation]);
 
@@ -200,24 +200,30 @@ export const TodayScreen: React.FC = () => {
   }, []);
 
   // Handle task completion from list
-  const handleQuickComplete = useCallback((taskId: number) => {
-    HapticFeedback.trigger('notificationSuccess');
-    useTodayStore.getState().completeTask(taskId);
+  const handleQuickComplete = useCallback(
+    (taskId: number) => {
+      HapticFeedback.trigger('notificationSuccess');
+      useTodayStore.getState().completeTask(taskId);
 
-    // Animate progress bar
-    progressScale.value = withSpring(1.1, {}, () => {
-      progressScale.value = withSpring(1);
-    });
+      // Animate progress bar
+      progressScale.value = withSpring(1.1, {}, () => {
+        progressScale.value = withSpring(1);
+      });
 
-    AccessibilityInfo.announceForAccessibility('Task marked as complete');
-  }, [progressScale]);
+      AccessibilityInfo.announceForAccessibility('Task marked as complete');
+    },
+    [progressScale]
+  );
 
   // Handle filter selection
-  const handleFilterPress = useCallback((type: TaskType | null) => {
-    HapticFeedback.trigger('selection');
-    setFilterType(type);
-    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-  }, [setFilterType]);
+  const handleFilterPress = useCallback(
+    (type: TaskType | null) => {
+      HapticFeedback.trigger('selection');
+      setFilterType(type);
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    },
+    [setFilterType]
+  );
 
   // Animated styles for progress
   const progressAnimatedStyle = useAnimatedStyle(() => ({
@@ -368,7 +374,7 @@ export const TodayScreen: React.FC = () => {
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={styles.loadingText}>Loading today's tasks...</Text>
+          <Text style={styles.loadingText}>Loading today&apos;s tasks...</Text>
         </View>
       </SafeAreaView>
     );
@@ -377,11 +383,7 @@ export const TodayScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* StreakBar at the top */}
-      <StreakBar
-        streak={streak}
-        isLoading={false}
-        onRefresh={refreshStreak}
-      />
+      <StreakBar streak={streak} isLoading={false} />
 
       <View style={styles.header}>
         <View style={styles.headerTop}>
@@ -409,26 +411,17 @@ export const TodayScreen: React.FC = () => {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.filterContainer}
-        >
-          {filterOptions.map((option) => (
+          style={styles.filterContainer}>
+          {filterOptions.map(option => (
             <TouchableOpacity
               key={option.value || 'all'}
-              style={[
-                styles.filterChip,
-                filterType === option.value && styles.filterChipActive,
-              ]}
+              style={[styles.filterChip, filterType === option.value && styles.filterChipActive]}
               onPress={() => handleFilterPress(option.value)}
               accessibilityRole="button"
               accessibilityLabel={`Filter by ${option.label}`}
-              accessibilityState={{ selected: filterType === option.value }}
-            >
+              accessibilityState={{ selected: filterType === option.value }}>
               <Text
-                style={[
-                  styles.filterText,
-                  filterType === option.value && styles.filterTextActive,
-                ]}
-              >
+                style={[styles.filterText, filterType === option.value && styles.filterTextActive]}>
                 {option.label}
               </Text>
             </TouchableOpacity>
@@ -448,13 +441,9 @@ export const TodayScreen: React.FC = () => {
             accessibilityLabel="Pull to refresh tasks"
           />
         }
-        showsVerticalScrollIndicator={false}
-      >
+        showsVerticalScrollIndicator={false}>
         {displayGroups.length === 0 ? (
-          <Animated.View
-            entering={FadeInDown.delay(200)}
-            style={styles.emptyContainer}
-          >
+          <Animated.View entering={FadeInDown.delay(200)} style={styles.emptyContainer}>
             <Text style={styles.emptyTitle}>
               {filterType ? `No ${filterType} tasks today` : 'No tasks for today'}
             </Text>
@@ -466,19 +455,14 @@ export const TodayScreen: React.FC = () => {
           </Animated.View>
         ) : (
           <>
-            <Animated.View
-              entering={FadeInUp.delay(100)}
-              style={styles.statsContainer}
-            >
+            <Animated.View entering={FadeInUp.delay(100)} style={styles.statsContainer}>
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
                   <Text style={styles.statValue}>{totalTasks}</Text>
                   <Text style={styles.statLabel}>Total</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: theme.success }]}>
-                    {completedTasks}
-                  </Text>
+                  <Text style={[styles.statValue, { color: theme.success }]}>{completedTasks}</Text>
                   <Text style={styles.statLabel}>Done</Text>
                 </View>
                 <View style={styles.statItem}>
@@ -497,10 +481,7 @@ export const TodayScreen: React.FC = () => {
             </Animated.View>
 
             {displayGroups.map((group, index) => (
-              <Animated.View
-                key={group.type}
-                entering={FadeInDown.delay(200 + index * 50)}
-              >
+              <Animated.View key={group.type} entering={FadeInDown.delay(200 + index * 50)}>
                 <TaskGroup
                   group={group}
                   onTaskPress={handleTaskPress}
@@ -533,10 +514,7 @@ export const TodayScreen: React.FC = () => {
       />
 
       {/* Confetti for celebrations */}
-      <ConfettiAnimation
-        active={!!newBadgeAwarded}
-        duration={4000}
-      />
+      <ConfettiAnimation active={!!newBadgeAwarded} duration={4000} />
     </SafeAreaView>
   );
 };

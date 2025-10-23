@@ -15,7 +15,6 @@ import {
   GetBadgeDetailsResponse,
   DailyComplianceStreak,
   UserBadgeWithMetadata,
-  BadgeMetadata,
   BadgeType,
 } from '@gtsd/shared-types';
 
@@ -39,9 +38,7 @@ export const streaksApi = {
     data?: GetMyStreakResponse;
     error?: string;
   }> => {
-    return apiRequest(() =>
-      apiClient.get<GetMyStreakResponse>('/v1/streaks/me')
-    );
+    return apiRequest(() => apiClient.get<GetMyStreakResponse>('/v1/streaks/me'));
   },
 
   /**
@@ -64,10 +61,7 @@ export const streaksApi = {
     error?: string;
   }> => {
     return apiRequest(() =>
-      apiClient.post<CheckComplianceResponse>(
-        '/v1/streaks/check-compliance',
-        request || {}
-      )
+      apiClient.post<CheckComplianceResponse>('/v1/streaks/check-compliance', request || {})
     );
   },
 };
@@ -92,9 +86,7 @@ export const badgesApi = {
     data?: GetMyBadgesResponse;
     error?: string;
   }> => {
-    return apiRequest(() =>
-      apiClient.get<GetMyBadgesResponse>('/v1/badges/me')
-    );
+    return apiRequest(() => apiClient.get<GetMyBadgesResponse>('/v1/badges/me'));
   },
 
   /**
@@ -113,9 +105,7 @@ export const badgesApi = {
     data?: GetAvailableBadgesResponse;
     error?: string;
   }> => {
-    return apiRequest(() =>
-      apiClient.get<GetAvailableBadgesResponse>('/v1/badges/available')
-    );
+    return apiRequest(() => apiClient.get<GetAvailableBadgesResponse>('/v1/badges/available'));
   },
 
   /**
@@ -137,9 +127,7 @@ export const badgesApi = {
     data?: GetBadgeDetailsResponse;
     error?: string;
   }> => {
-    return apiRequest(() =>
-      apiClient.get<GetBadgeDetailsResponse>(`/v1/badges/${badgeType}`)
-    );
+    return apiRequest(() => apiClient.get<GetBadgeDetailsResponse>(`/v1/badges/${badgeType}`));
   },
 };
 

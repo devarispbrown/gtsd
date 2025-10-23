@@ -7,14 +7,7 @@
  */
 
 import React, { Component, ReactNode } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  SafeAreaView,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import { logger } from '../utils/logger';
 
@@ -67,15 +60,11 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     const { errorCount } = this.state;
 
     // Log the error
-    logger.error(
-      `Error Boundary caught error${context ? ` in ${context}` : ''}`,
-      error,
-      {
-        componentStack: errorInfo.componentStack,
-        errorCount: errorCount + 1,
-        context,
-      }
-    );
+    logger.error(`Error Boundary caught error${context ? ` in ${context}` : ''}`, error, {
+      componentStack: errorInfo.componentStack,
+      errorCount: errorCount + 1,
+      context,
+    });
 
     // Call custom error handler if provided
     if (onError) {
@@ -156,7 +145,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   };
 
   render() {
-    const { hasError, error, errorInfo, errorCount } = this.state;
+    const { hasError, error, errorCount } = this.state;
     const { children, fallback, isolate, context } = this.props;
 
     if (hasError && error) {
@@ -173,8 +162,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
         <SafeAreaView style={styles.container}>
           <ScrollView
             contentContainerStyle={styles.scrollContainer}
-            showsVerticalScrollIndicator={false}
-          >
+            showsVerticalScrollIndicator={false}>
             <View style={styles.content}>
               <Text style={styles.emoji}>🤔</Text>
 
@@ -204,8 +192,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
               <TouchableOpacity
                 style={styles.retryButton}
                 onPress={this.resetErrorBoundary}
-                activeOpacity={0.8}
-              >
+                activeOpacity={0.8}>
                 <Text style={styles.retryButtonText}>Try Again</Text>
               </TouchableOpacity>
 

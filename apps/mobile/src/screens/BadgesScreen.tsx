@@ -23,7 +23,7 @@ import HapticFeedback from 'react-native-haptic-feedback';
 import { colors } from '../constants/colors';
 import { BadgeCard } from '../components/BadgeCard';
 import { useStreaksStore } from '../stores/streaksStore';
-import { UserBadgeWithMetadata, BadgeMetadata, BADGE_CATALOG, BadgeType } from '@gtsd/shared-types';
+import { UserBadgeWithMetadata, BadgeMetadata, BADGE_CATALOG } from '@gtsd/shared-types';
 
 type FilterCategory = 'all' | 'earned' | 'locked';
 
@@ -31,13 +31,7 @@ export const BadgesScreen: React.FC = () => {
   const isDarkMode = useColorScheme() === 'dark';
   const theme = isDarkMode ? colors.dark : colors.light;
 
-  const {
-    badges,
-    isLoading,
-    isRefreshing,
-    fetchUserBadges,
-    refreshBadges,
-  } = useStreaksStore();
+  const { badges, isLoading, isRefreshing, fetchUserBadges, refreshBadges } = useStreaksStore();
 
   const [selectedFilter, setSelectedFilter] = useState<FilterCategory>('all');
   const [selectedBadge, setSelectedBadge] = useState<BadgeMetadata | null>(null);
@@ -60,13 +54,16 @@ export const BadgesScreen: React.FC = () => {
     setShowBadgeDetail(true);
   }, []);
 
-  const handleFilterChange = useCallback((filter: FilterCategory) => {
-    HapticFeedback.trigger('selection');
-    setSelectedFilter(filter);
-    progressScale.value = withSpring(1.05, {}, () => {
-      progressScale.value = withSpring(1);
-    });
-  }, [progressScale]);
+  const handleFilterChange = useCallback(
+    (filter: FilterCategory) => {
+      HapticFeedback.trigger('selection');
+      setSelectedFilter(filter);
+      progressScale.value = withSpring(1.05, {}, () => {
+        progressScale.value = withSpring(1);
+      });
+    },
+    [progressScale]
+  );
 
   // Get all available badges
   const allBadges = Object.values(BADGE_CATALOG);
@@ -80,7 +77,7 @@ export const BadgesScreen: React.FC = () => {
       case 'locked':
         return allBadges.filter(b => !earnedBadgeTypes.has(b.type));
       case 'all':
-      default:
+      default: {
         // Combine earned and locked badges
         const combinedBadges: (UserBadgeWithMetadata | BadgeMetadata)[] = [...badges];
         allBadges.forEach(badge => {
@@ -89,28 +86,32 @@ export const BadgesScreen: React.FC = () => {
           }
         });
         return combinedBadges;
+      }
     }
   };
 
   const filteredBadges = getFilteredBadges();
   const totalAvailable = allBadges.length;
   const totalEarned = badges.length;
-  const completionPercentage = totalAvailable > 0 ? Math.round((totalEarned / totalAvailable) * 100) : 0;
+  const completionPercentage =
+    totalAvailable > 0 ? Math.round((totalEarned / totalAvailable) * 100) : 0;
 
   const progressAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: progressScale.value }],
   }));
 
-  const renderBadgeItem = ({ item, index }: { item: UserBadgeWithMetadata | BadgeMetadata; index: number }) => {
+  const renderBadgeItem = ({
+    item,
+    index,
+  }: {
+    item: UserBadgeWithMetadata | BadgeMetadata;
+    index: number;
+  }) => {
     const isEarned = 'userId' in item;
 
     if (isEarned) {
       return (
-        <BadgeCard
-          badge={item as UserBadgeWithMetadata}
-          onPress={handleBadgePress}
-          index={index}
-        />
+        <BadgeCard badge={item as UserBadgeWithMetadata} onPress={handleBadgePress} index={index} />
       );
     }
 
@@ -121,10 +122,10 @@ export const BadgesScreen: React.FC = () => {
         <TouchableOpacity
           style={[styles.lockedBadgeCard, { borderColor: theme.separator }]}
           onPress={() => handleBadgePress(badge)}
-          activeOpacity={0.7}
-        >
+          activeOpacity={0.7}>
           <View style={styles.lockedBadgeHeader}>
-            <View style={[styles.lockedEmojiContainer, { backgroundColor: theme.separator + '40' }]}>
+            <View
+              style={[styles.lockedEmojiContainer, { backgroundColor: theme.separator + '40' }]}>
               <Text style={styles.lockedEmoji}>🔒</Text>
             </View>
             <View style={styles.lockedInfo}>
@@ -230,9 +231,6 @@ export const BadgesScreen: React.FC = () => {
     },
     filterTextActive: {
       color: '#FFFFFF',
-    },
-    content: {
-      flex: 1,
     },
     loadingContainer: {
       flex: 1,
@@ -446,65 +444,37 @@ export const BadgesScreen: React.FC = () => {
           <View style={styles.progressBar}>
             <Animated.View
               entering={FadeIn.delay(300)}
-              style={[
-                styles.progressFill,
-                { width: `${completionPercentage}%` },
-              ]}
+              style={[styles.progressFill, { width: `${completionPercentage}%` }]}
             />
           </View>
         </Animated.View>
 
         <View style={styles.filterContainer}>
           <TouchableOpacity
-            style={[
-              styles.filterButton,
-              selectedFilter === 'all' && styles.filterButtonActive,
-            ]}
+            style={[styles.filterButton, selectedFilter === 'all' && styles.filterButtonActive]}
             onPress={() => handleFilterChange('all')}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                selectedFilter === 'all' && styles.filterTextActive,
-              ]}
-            >
+            activeOpacity={0.7}>
+            <Text style={[styles.filterText, selectedFilter === 'all' && styles.filterTextActive]}>
               All
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.filterButton,
-              selectedFilter === 'earned' && styles.filterButtonActive,
-            ]}
+            style={[styles.filterButton, selectedFilter === 'earned' && styles.filterButtonActive]}
             onPress={() => handleFilterChange('earned')}
-            activeOpacity={0.7}
-          >
+            activeOpacity={0.7}>
             <Text
-              style={[
-                styles.filterText,
-                selectedFilter === 'earned' && styles.filterTextActive,
-              ]}
-            >
+              style={[styles.filterText, selectedFilter === 'earned' && styles.filterTextActive]}>
               Earned ({totalEarned})
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.filterButton,
-              selectedFilter === 'locked' && styles.filterButtonActive,
-            ]}
+            style={[styles.filterButton, selectedFilter === 'locked' && styles.filterButtonActive]}
             onPress={() => handleFilterChange('locked')}
-            activeOpacity={0.7}
-          >
+            activeOpacity={0.7}>
             <Text
-              style={[
-                styles.filterText,
-                selectedFilter === 'locked' && styles.filterTextActive,
-              ]}
-            >
+              style={[styles.filterText, selectedFilter === 'locked' && styles.filterTextActive]}>
               Locked ({totalAvailable - totalEarned})
             </Text>
           </TouchableOpacity>
@@ -514,10 +484,8 @@ export const BadgesScreen: React.FC = () => {
       <FlatList
         data={filteredBadges}
         renderItem={renderBadgeItem}
-        keyExtractor={(item) => 'userId' in item ? `${item.badgeType}-${item.id}` : item.type}
-        contentContainerStyle={
-          filteredBadges.length === 0 ? { flex: 1 } : { paddingBottom: 100 }
-        }
+        keyExtractor={item => ('userId' in item ? `${item.badgeType}-${item.id}` : item.type)}
+        contentContainerStyle={filteredBadges.length === 0 ? { flex: 1 } : { paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -528,18 +496,14 @@ export const BadgesScreen: React.FC = () => {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyEmoji}>
-              {selectedFilter === 'earned' ? '🎯' : '🔒'}
-            </Text>
+            <Text style={styles.emptyEmoji}>{selectedFilter === 'earned' ? '🎯' : '🔒'}</Text>
             <Text style={styles.emptyTitle}>
-              {selectedFilter === 'earned'
-                ? 'No badges earned yet'
-                : 'All badges unlocked!'}
+              {selectedFilter === 'earned' ? 'No badges earned yet' : 'All badges unlocked!'}
             </Text>
             <Text style={styles.emptyDescription}>
               {selectedFilter === 'earned'
                 ? 'Complete your daily tasks to start earning achievement badges!'
-                : 'Congratulations! You\'ve unlocked every achievement!'}
+                : "Congratulations! You've unlocked every achievement!"}
             </Text>
           </View>
         }
@@ -550,19 +514,14 @@ export const BadgesScreen: React.FC = () => {
         visible={showBadgeDetail}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowBadgeDetail(false)}
-      >
+        onRequestClose={() => setShowBadgeDetail(false)}>
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => setShowBadgeDetail(false)}
-        >
+          onPress={() => setShowBadgeDetail(false)}>
           <TouchableOpacity activeOpacity={1}>
             {selectedBadge && (
-              <Animated.View
-                entering={FadeIn.springify()}
-                style={styles.modalContent}
-              >
+              <Animated.View entering={FadeIn.springify()} style={styles.modalContent}>
                 <ScrollView showsVerticalScrollIndicator={false}>
                   <View style={styles.modalHeader}>
                     <View
@@ -573,19 +532,16 @@ export const BadgesScreen: React.FC = () => {
                             selectedBadge.category === 'milestone'
                               ? '#4CAF50' + '20'
                               : selectedBadge.category === 'streak'
-                              ? '#FF9800' + '20'
-                              : selectedBadge.category === 'task_specific'
-                              ? '#2196F3' + '20'
-                              : selectedBadge.category === 'time_based'
-                              ? '#9C27B0' + '20'
-                              : '#FFD700' + '20',
+                                ? '#FF9800' + '20'
+                                : selectedBadge.category === 'task_specific'
+                                  ? '#2196F3' + '20'
+                                  : selectedBadge.category === 'time_based'
+                                    ? '#9C27B0' + '20'
+                                    : '#FFD700' + '20',
                         },
-                      ]}
-                    >
+                      ]}>
                       <Text style={styles.modalEmoji}>
-                        {earnedBadgeTypes.has(selectedBadge.type)
-                          ? selectedBadge.emoji
-                          : '🔒'}
+                        {earnedBadgeTypes.has(selectedBadge.type) ? selectedBadge.emoji : '🔒'}
                       </Text>
                     </View>
                     <Text style={styles.modalTitle}>{selectedBadge.name}</Text>
@@ -594,15 +550,11 @@ export const BadgesScreen: React.FC = () => {
                     </Text>
                   </View>
 
-                  <Text style={styles.modalDescription}>
-                    {selectedBadge.description}
-                  </Text>
+                  <Text style={styles.modalDescription}>{selectedBadge.description}</Text>
 
                   <View style={styles.modalCriteria}>
                     <Text style={styles.modalCriteriaLabel}>How to Unlock</Text>
-                    <Text style={styles.modalCriteriaText}>
-                      {selectedBadge.unlockCriteria}
-                    </Text>
+                    <Text style={styles.modalCriteriaText}>{selectedBadge.unlockCriteria}</Text>
                   </View>
 
                   <View
@@ -611,8 +563,7 @@ export const BadgesScreen: React.FC = () => {
                       earnedBadgeTypes.has(selectedBadge.type)
                         ? styles.modalStatusEarned
                         : styles.modalStatusLocked,
-                    ]}
-                  >
+                    ]}>
                     <Text style={styles.modalStatusIcon}>
                       {earnedBadgeTypes.has(selectedBadge.type) ? '✅' : '🔒'}
                     </Text>
@@ -624,8 +575,7 @@ export const BadgesScreen: React.FC = () => {
                             ? '#4CAF50'
                             : theme.textSecondary,
                         },
-                      ]}
-                    >
+                      ]}>
                       {earnedBadgeTypes.has(selectedBadge.type) ? 'EARNED' : 'LOCKED'}
                     </Text>
                   </View>
@@ -633,8 +583,7 @@ export const BadgesScreen: React.FC = () => {
                   <TouchableOpacity
                     style={styles.modalCloseButton}
                     onPress={() => setShowBadgeDetail(false)}
-                    activeOpacity={0.8}
-                  >
+                    activeOpacity={0.8}>
                     <Text style={styles.modalCloseButtonText}>Close</Text>
                   </TouchableOpacity>
                 </ScrollView>
