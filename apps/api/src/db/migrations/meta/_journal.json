@@ -57,6 +57,13 @@
       "when": 1760996280000,
       "tag": "0007_add_auth_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1761238689256,
+      "tag": "0008_fast_sasquatch",
+      "breakpoints": true
     }
   ]
 }

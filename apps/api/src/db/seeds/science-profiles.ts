@@ -26,7 +26,12 @@ interface SeedProfile {
   currentWeight: number; // kg
   height: number; // cm
   targetWeight: number; // kg
-  activityLevel: 'sedentary' | 'lightly_active' | 'moderately_active' | 'very_active' | 'extremely_active';
+  activityLevel:
+    | 'sedentary'
+    | 'lightly_active'
+    | 'moderately_active'
+    | 'very_active'
+    | 'extremely_active';
   primaryGoal: 'lose_weight' | 'gain_muscle' | 'maintain' | 'improve_health';
   mealsPerDay: number;
 }
@@ -207,8 +212,37 @@ async function seedScienceProfiles() {
         (new Date().getTime() - profile.dateOfBirth.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
       );
 
-      // Use ScienceService to compute all targets
-      const targets = await scienceService.computeAllTargets(userId);
+      // Compute targets directly using science service methods (without DB lookup)
+      const bmr = scienceService.calculateBMR(
+        profile.currentWeight,
+        profile.height,
+        age,
+        profile.gender
+      );
+      const tdee = scienceService.calculateTDEE(bmr, profile.activityLevel);
+      const calorieTarget = scienceService.calculateCalorieTarget(tdee, profile.primaryGoal);
+      const proteinTarget = scienceService.calculateProteinTarget(
+        profile.currentWeight,
+        profile.primaryGoal
+      );
+      const waterTarget = scienceService.calculateWaterTarget(profile.currentWeight);
+      const weeklyRate = scienceService.calculateWeeklyRate(profile.primaryGoal);
+      const projection = scienceService.calculateProjection(
+        profile.currentWeight,
+        profile.targetWeight,
+        weeklyRate
+      );
+
+      const targets = {
+        bmr,
+        tdee,
+        calorieTarget,
+        proteinTarget,
+        waterTarget,
+        weeklyRate,
+        estimatedWeeks: projection.estimatedWeeks,
+        projectedDate: projection.projectedDate,
+      };
 
       logger.info(
         {
@@ -236,9 +270,9 @@ async function seedScienceProfiles() {
           userId,
           dateOfBirth: profile.dateOfBirth,
           gender: profile.gender,
-          currentWeight: profile.currentWeight.toFixed(2),
-          height: profile.height.toFixed(2),
-          targetWeight: profile.targetWeight.toFixed(2),
+          currentWeight: profile.currentWeight.toString(),
+          height: profile.height.toString(),
+          targetWeight: profile.targetWeight.toString(),
           targetDate: addWeeks(new Date(), targets.estimatedWeeks || 12),
           activityLevel: profile.activityLevel,
           primaryGoal: profile.primaryGoal,
@@ -256,9 +290,9 @@ async function seedScienceProfiles() {
           set: {
             dateOfBirth: profile.dateOfBirth,
             gender: profile.gender,
-            currentWeight: profile.currentWeight.toFixed(2),
-            height: profile.height.toFixed(2),
-            targetWeight: profile.targetWeight.toFixed(2),
+            currentWeight: profile.currentWeight.toString(),
+            height: profile.height.toString(),
+            targetWeight: profile.targetWeight.toString(),
             targetDate: addWeeks(new Date(), targets.estimatedWeeks || 12),
             activityLevel: profile.activityLevel,
             primaryGoal: profile.primaryGoal,
@@ -270,7 +304,6 @@ async function seedScienceProfiles() {
             mealsPerDay: profile.mealsPerDay,
             onboardingCompleted: true,
             onboardingCompletedAt: new Date(),
-            updatedAt: new Date(),
           },
         });
 
@@ -280,11 +313,11 @@ async function seedScienceProfiles() {
           .insert(initialPlanSnapshot)
           .values({
             userId,
-            startWeight: profile.currentWeight.toFixed(2),
-            targetWeight: profile.targetWeight.toFixed(2),
+            startWeight: profile.currentWeight.toString(),
+            targetWeight: profile.targetWeight.toString(),
             startDate: new Date(),
             targetDate: targets.projectedDate,
-            weeklyWeightChangeRate: targets.weeklyRate.toFixed(2),
+            weeklyWeightChangeRate: targets.weeklyRate.toString(),
             estimatedWeeks: targets.estimatedWeeks,
             projectedCompletionDate: targets.projectedDate,
             calorieTarget: targets.calorieTarget,
@@ -296,11 +329,8 @@ async function seedScienceProfiles() {
           .onConflictDoUpdate({
             target: initialPlanSnapshot.userId,
             set: {
-              startWeight: profile.currentWeight.toFixed(2),
-              targetWeight: profile.targetWeight.toFixed(2),
-              startDate: new Date(),
-              targetDate: targets.projectedDate,
-              weeklyWeightChangeRate: targets.weeklyRate.toFixed(2),
+              targetWeight: profile.targetWeight.toString(),
+              weeklyWeightChangeRate: targets.weeklyRate.toString(),
               estimatedWeeks: targets.estimatedWeeks,
               projectedCompletionDate: targets.projectedDate,
               calorieTarget: targets.calorieTarget,
@@ -351,4 +381,4 @@ async function seedScienceProfiles() {
 }
 
 // Run seed
-seedScienceProfiles();
+void seedScienceProfiles();
