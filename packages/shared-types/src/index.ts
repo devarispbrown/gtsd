@@ -36,5 +36,8 @@ export * from './auth-types';
 // Streaks and badges types
 export * from './streaks';
 
+// Science and health calculations types
+export * from './science';
+
 // Type guards
 export * from './type-guards';

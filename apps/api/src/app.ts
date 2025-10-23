@@ -19,6 +19,7 @@ import tasksRouter from './routes/tasks';
 import smsRouter from './routes/sms';
 import progressRouter from './routes/progress/photos';
 import streaksRouter from './routes/streaks';
+import plansRouter from './routes/plans';
 
 export const createApp = (): Application => {
   const app = express();
@@ -60,6 +61,7 @@ export const createApp = (): Application => {
   app.use('/v1', tasksRouter);
   app.use('/v1', smsRouter);
   app.use('/v1', streaksRouter);
+  app.use('/v1', plansRouter);
   app.use('/v1/progress', progressRouter);
 
   // Error handlers (must be last)
