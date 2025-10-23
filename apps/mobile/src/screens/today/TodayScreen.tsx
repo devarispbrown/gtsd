@@ -12,7 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute, useFocusEffect } from '@react-navigation/native';
+import { useRoute, useFocusEffect, useNavigation } from '@react-navigation/native';
 import Animated, {
   FadeInDown,
   FadeInUp,
@@ -24,10 +24,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import HapticFeedback from 'react-native-haptic-feedback';
 import { useTodayStore } from '../../stores/todayStore';
+import { useStreaksStore } from '../../stores/streaksStore';
 import { TaskGroup } from '../../components/today/TaskGroup';
-import { StreakBadge } from '../../components/today/StreakBadge';
+import { StreakBar } from '../../components/StreakBar';
 import { CompletionProgress } from '../../components/today/CompletionProgress';
 import { TaskDetailModal } from './TaskDetailModal';
+import { BadgeAwardModal } from '../../components/BadgeAwardModal';
+import { ConfettiAnimation } from '../../components/ConfettiAnimation';
 import { colors } from '../../constants/colors';
 import { TASK_TYPE_COLORS } from '../../types/tasks';
 import { TaskType } from '@gtsd/shared-types';
@@ -35,14 +38,14 @@ import type { TodayScreenProps } from '../../types/navigation';
 
 export const TodayScreen: React.FC = () => {
   const route = useRoute<TodayScreenProps['route']>();
+  const navigation = useNavigation();
   const isDarkMode = useColorScheme() === 'dark';
   const theme = isDarkMode ? colors.dark : colors.light;
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Store state
+  // Store state - Today tasks
   const {
     taskGroups,
-    streaks,
     completionRate,
     totalTasks,
     completedTasks,
@@ -57,6 +60,16 @@ export const TodayScreen: React.FC = () => {
     filterType,
   } = useTodayStore();
 
+  // Store state - Streaks and badges
+  const {
+    streak,
+    newBadgeAwarded,
+    fetchStreakData,
+    refreshStreak,
+    checkComplianceAndAwards,
+    clearBadgeAward,
+  } = useStreaksStore();
+
   // Local state
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedDate] = useState(new Date());
@@ -69,7 +82,19 @@ export const TodayScreen: React.FC = () => {
   // Initial data fetch
   useEffect(() => {
     fetchTodayTasks();
-  }, [fetchTodayTasks]);
+    fetchStreakData();
+  }, [fetchTodayTasks, fetchStreakData]);
+
+  // Check compliance when tasks are completed
+  useEffect(() => {
+    if (completedTasks > 0 && totalTasks > 0) {
+      // Check if we should check compliance (80% threshold)
+      const percentage = (completedTasks / totalTasks) * 100;
+      if (percentage >= 80) {
+        checkComplianceAndAwards();
+      }
+    }
+  }, [completedTasks, totalTasks, checkComplianceAndAwards]);
 
   // Handle deep link parameters
   useFocusEffect(
@@ -157,9 +182,15 @@ export const TodayScreen: React.FC = () => {
   // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {
     HapticFeedback.trigger('impactLight');
-    await refreshTasks();
-    AccessibilityInfo.announceForAccessibility('Tasks refreshed');
-  }, [refreshTasks]);
+    await Promise.all([refreshTasks(), refreshStreak()]);
+    AccessibilityInfo.announceForAccessibility('Tasks and streaks refreshed');
+  }, [refreshTasks, refreshStreak]);
+
+  // Handle navigation to badges
+  const handleNavigateToBadges = useCallback(() => {
+    // @ts-ignore - Navigation typing will be updated in navigation step
+    navigation.navigate('Badges');
+  }, [navigation]);
 
   // Handle task selection
   const handleTaskPress = useCallback((taskId: number) => {
@@ -345,17 +376,18 @@ export const TodayScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
+      {/* StreakBar at the top */}
+      <StreakBar
+        streak={streak}
+        isLoading={false}
+        onRefresh={refreshStreak}
+      />
+
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.headerTitle} accessibilityRole="header">
             Today
           </Text>
-          {streaks && (
-            <StreakBadge
-              currentStreak={streaks.current}
-              longestStreak={streaks.longest}
-            />
-          )}
         </View>
 
         <Text style={styles.dateText}>
@@ -491,6 +523,20 @@ export const TodayScreen: React.FC = () => {
           }}
         />
       )}
+
+      {/* Badge Award Modal */}
+      <BadgeAwardModal
+        visible={!!newBadgeAwarded}
+        badge={newBadgeAwarded}
+        onClose={clearBadgeAward}
+        onViewBadges={handleNavigateToBadges}
+      />
+
+      {/* Confetti for celebrations */}
+      <ConfettiAnimation
+        active={!!newBadgeAwarded}
+        duration={4000}
+      />
     </SafeAreaView>
   );
 };

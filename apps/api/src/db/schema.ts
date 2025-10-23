@@ -75,6 +75,7 @@ export const userSettings = pgTable('user_settings', {
   dietaryPreferences: jsonb('dietary_preferences').$type<string[]>(), // vegetarian, vegan, etc.
   allergies: jsonb('allergies').$type<string[]>(),
   mealsPerDay: integer('meals_per_day').default(3),
+  complianceThreshold: decimal('compliance_threshold', { precision: 3, scale: 2 }).default('0.80'), // Daily compliance threshold (80% default)
 
   // Onboarding completion
   onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
@@ -185,6 +186,91 @@ export const smsMessageTypeEnum = pgEnum('sms_message_type', ['morning_nudge', '
 export const smsStatusEnum = pgEnum('sms_status', ['queued', 'sent', 'delivered', 'failed']);
 
 export const photoEvidenceTypeEnum = pgEnum('photo_evidence_type', ['before', 'during', 'after']);
+
+export const badgeTypeEnum = pgEnum('badge_type', [
+  'day_one_done',
+  'week_warrior',
+  'consistency_king',
+  'hundred_club',
+  'perfect_month',
+  'hydration_nation',
+  'protein_pro',
+  'workout_warrior',
+  'supplement_champion',
+  'cardio_king',
+  'early_bird',
+  'night_owl',
+  'weekend_warrior',
+  'comeback_kid',
+  'milestone_master',
+  'photo_finisher',
+]);
+
+// ============================================================================
+// DAILY COMPLIANCE STREAKS TABLE - Track daily compliance based on task completion
+// ============================================================================
+
+export const dailyComplianceStreaks = pgTable(
+  'daily_compliance_streaks',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    // Streak tracking
+    currentStreak: integer('current_streak').default(0).notNull(),
+    longestStreak: integer('longest_streak').default(0).notNull(),
+    totalCompliantDays: integer('total_compliant_days').default(0).notNull(),
+
+    // Date tracking
+    lastComplianceDate: timestamp('last_compliance_date', { withTimezone: true }),
+    streakStartDate: timestamp('streak_start_date', { withTimezone: true }),
+
+    // Timestamps
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: uniqueIndex('daily_compliance_streaks_user_id_idx').on(table.userId),
+    lastComplianceDateIdx: index('daily_compliance_streaks_last_compliance_date_idx').on(
+      table.lastComplianceDate
+    ),
+    longestStreakIdx: index('daily_compliance_streaks_longest_streak_idx').on(table.longestStreak),
+    currentStreakIdx: index('daily_compliance_streaks_current_streak_idx').on(table.currentStreak),
+  })
+);
+
+// ============================================================================
+// USER BADGES TABLE - Achievement badges awarded to users
+// ============================================================================
+
+export const userBadges = pgTable(
+  'user_badges',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    // Badge type
+    badgeType: badgeTypeEnum('badge_type').notNull(),
+
+    // Award metadata
+    awardedAt: timestamp('awarded_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('user_badges_user_id_idx').on(table.userId),
+    badgeTypeIdx: index('user_badges_badge_type_idx').on(table.badgeType),
+    userBadgeIdx: index('user_badges_user_badge_idx').on(table.userId, table.badgeType),
+    // CRITICAL: Unique constraint ensures idempotent badge awards
+    userBadgeTypeUnique: uniqueIndex('user_badges_user_badge_type_unique').on(
+      table.userId,
+      table.badgeType
+    ),
+  })
+);
 
 // ============================================================================
 // REFRESH TOKENS TABLE - Store refresh tokens for JWT auth
@@ -553,6 +639,8 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   dailyTasks: many(dailyTasks),
   evidence: many(evidence),
   streaks: many(streaks),
+  dailyComplianceStreak: one(dailyComplianceStreaks),
+  userBadges: many(userBadges),
   smsLogs: many(smsLogs),
   photos: many(photos),
   refreshTokens: many(refreshTokens),
@@ -593,6 +681,20 @@ export const evidenceRelations = relations(evidence, ({ one }) => ({
 export const streaksRelations = relations(streaks, ({ one }) => ({
   user: one(users, {
     fields: [streaks.userId],
+    references: [users.id],
+  }),
+}));
+
+export const dailyComplianceStreaksRelations = relations(dailyComplianceStreaks, ({ one }) => ({
+  user: one(users, {
+    fields: [dailyComplianceStreaks.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userBadgesRelations = relations(userBadges, ({ one }) => ({
+  user: one(users, {
+    fields: [userBadges.userId],
     references: [users.id],
   }),
 }));
@@ -757,3 +859,23 @@ export type SelectRefreshToken = InferSelectModel<typeof refreshTokens>;
  * Inferred type for inserting a refresh token
  */
 export type InsertRefreshToken = InferInsertModel<typeof refreshTokens>;
+
+/**
+ * Inferred type for selecting a daily compliance streak
+ */
+export type SelectDailyComplianceStreak = InferSelectModel<typeof dailyComplianceStreaks>;
+
+/**
+ * Inferred type for inserting a daily compliance streak
+ */
+export type InsertDailyComplianceStreak = InferInsertModel<typeof dailyComplianceStreaks>;
+
+/**
+ * Inferred type for selecting a user badge
+ */
+export type SelectUserBadge = InferSelectModel<typeof userBadges>;
+
+/**
+ * Inferred type for inserting a user badge
+ */
+export type InsertUserBadge = InferInsertModel<typeof userBadges>;

@@ -7,13 +7,17 @@
 -- ============================================================================
 
 -- Evidence type enum for task_evidence table
-CREATE TYPE photo_evidence_type AS ENUM ('before', 'during', 'after');
+DO $$ BEGIN
+ CREATE TYPE photo_evidence_type AS ENUM ('before', 'during', 'after');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
 
 -- ============================================================================
 -- PHOTOS TABLE
 -- ============================================================================
 
-CREATE TABLE photos (
+CREATE TABLE IF NOT EXISTS photos (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 
@@ -33,16 +37,16 @@ CREATE TABLE photos (
 );
 
 -- Index for querying user's photos sorted by creation date
-CREATE INDEX photos_user_created_idx ON photos(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS photos_user_created_idx ON photos(user_id, created_at DESC);
 
 -- Unique index for file_key to prevent duplicates
-CREATE UNIQUE INDEX photos_file_key_idx ON photos(file_key);
+CREATE UNIQUE INDEX IF NOT EXISTS photos_file_key_idx ON photos(file_key);
 
 -- ============================================================================
 -- TASK_EVIDENCE TABLE (Many-to-Many)
 -- ============================================================================
 
-CREATE TABLE task_evidence (
+CREATE TABLE IF NOT EXISTS task_evidence (
   id SERIAL PRIMARY KEY,
   task_id INTEGER NOT NULL REFERENCES daily_tasks(id) ON DELETE CASCADE,
   photo_id INTEGER NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
@@ -51,10 +55,10 @@ CREATE TABLE task_evidence (
 );
 
 -- Unique index to prevent duplicate photo-task links
-CREATE UNIQUE INDEX task_evidence_task_photo_idx ON task_evidence(task_id, photo_id);
+CREATE UNIQUE INDEX IF NOT EXISTS task_evidence_task_photo_idx ON task_evidence(task_id, photo_id);
 
 -- Index for querying photos by task
-CREATE INDEX task_evidence_photo_idx ON task_evidence(photo_id);
+CREATE INDEX IF NOT EXISTS task_evidence_photo_idx ON task_evidence(photo_id);
 
 -- ============================================================================
 -- COMMENTS

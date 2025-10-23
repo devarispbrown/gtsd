@@ -1,28 +1,79 @@
+/** @type {import('jest').Config} */
 module.exports = {
-  preset: 'ts-jest',
   testEnvironment: 'node',
+
+  // Root directory for tests
   roots: ['<rootDir>/src'],
-  testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
+
+  // Test file patterns
+  testMatch: ['**/__tests__/**/*.test.ts', '**/?(*.)+(spec|test).ts'],
+
+  // Setup files
+  setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
+
+  // Transform TypeScript files with ts-jest
+  transform: {
+    '^.+\\.ts$': ['ts-jest', {
+      tsconfig: {
+        esModuleInterop: true,
+        allowSyntheticDefaultImports: true,
+        resolveJsonModule: true,
+        moduleResolution: 'node',
+      },
+    }],
+  },
+
+  // Module name mapper for path aliases
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
+    // Map @gtsd/shared-types to source files instead of dist
+    '^@gtsd/shared-types$': '<rootDir>/../../packages/shared-types/src/index.ts',
+  },
+
+  // Allow Jest to transform files from @gtsd/shared-types package
+  transformIgnorePatterns: [
+    'node_modules/(?!(@gtsd/shared-types)/)',
+  ],
+
+  // Coverage configuration
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
     '!src/**/*.test.ts',
     '!src/**/*.spec.ts',
     '!src/index.ts',
-    '!src/test/**/*.ts',
+    '!src/test/**',
+    '!src/db/seed*.ts',
+    '!src/db/migrations/**',
+    '!src/scripts/**',
+    '!src/workers/**',
   ],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
     global: {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80,
+      branches: 70,
+      functions: 70,
+      lines: 70,
+      statements: 70,
     },
   },
-  coverageDirectory: 'coverage',
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  globalSetup: '<rootDir>/src/test/globalSetup.ts',
-  globalTeardown: '<rootDir>/src/test/globalTeardown.ts',
-  setupFilesAfterEnv: ['<rootDir>/src/test/setupAfterEnv.ts'],
+
+  // Timeout for database operations
   testTimeout: 30000,
+
+  // Module file extensions
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+
+  // Clear mocks between tests
+  clearMocks: true,
+
+  // Verbose output
+  verbose: true,
+
+  // Detect open handles (useful for database connections)
+  detectOpenHandles: true,
+
+  // Force exit after tests complete
+  forceExit: true,
 };

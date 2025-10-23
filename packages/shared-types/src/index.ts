@@ -33,5 +33,8 @@ export * from './sms';
 // Authentication types
 export * from './auth-types';
 
+// Streaks and badges types
+export * from './streaks';
+
 // Type guards
 export * from './type-guards';

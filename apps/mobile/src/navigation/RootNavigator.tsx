@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator } from 'react-native';
 import { TodayScreen } from '@screens/TodayScreen';
+import { BadgesScreen } from '../screens/BadgesScreen';
 import { RootStackParamList } from '../types/navigation';
 import { useThemeStore } from '@store/themeStore';
 import { useAuthStore } from '../stores/authStore';
@@ -210,6 +211,15 @@ const RootNavigator: React.FC = () => {
               },
             }}
           />
+          <Stack.Screen
+            name="Badges"
+            component={BadgesScreen}
+            options={{
+              title: 'Achievements',
+              headerBackTitle: 'Back',
+              headerLargeTitle: false,
+            }}
+          />
           {/* Add other main app screens here */}
         </>
       )}
@@ -298,6 +308,15 @@ const RootNavigator: React.FC = () => {
                 fontWeight: '700',
                 fontSize: 34,
               },
+            }}
+          />
+          <Stack.Screen
+            name="Badges"
+            component={BadgesScreen}
+            options={{
+              title: 'Achievements',
+              headerBackTitle: 'Back',
+              headerLargeTitle: false,
             }}
           />
         </>

@@ -128,3 +128,41 @@ export const isTaskStatus = (value: unknown): value is TaskStatus => {
 export const isEvidenceType = (value: unknown): value is EvidenceType => {
   return Object.values(EvidenceType).includes(value as EvidenceType);
 };
+
+/**
+ * Badge type enum - Achievement badges that can be awarded to users
+ */
+export enum BadgeType {
+  // Current badges
+  DayOneDone = 'day_one_done',
+
+  // Future streak-based badges
+  WeekWarrior = 'week_warrior',
+  ConsistencyKing = 'consistency_king',
+  HundredClub = 'hundred_club',
+  PerfectMonth = 'perfect_month',
+
+  // Future task-specific badges
+  HydrationNation = 'hydration_nation',
+  ProteinPro = 'protein_pro',
+  WorkoutWarrior = 'workout_warrior',
+  SupplementChampion = 'supplement_champion',
+  CardioKing = 'cardio_king',
+
+  // Future time-based badges
+  EarlyBird = 'early_bird',
+  NightOwl = 'night_owl',
+  WeekendWarrior = 'weekend_warrior',
+
+  // Future special badges
+  ComebackKid = 'comeback_kid',
+  MilestoneMaster = 'milestone_master',
+  PhotoFinisher = 'photo_finisher',
+}
+
+/**
+ * Type guard to check if a value is a valid BadgeType
+ */
+export const isBadgeType = (value: unknown): value is BadgeType => {
+  return Object.values(BadgeType).includes(value as BadgeType);
+};

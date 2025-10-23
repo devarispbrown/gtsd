@@ -45,6 +45,12 @@ export type RootStackParamList = {
     taskId: number;
   };
 
+  /**
+   * Badges/Achievements screen
+   * Shows earned and available badges
+   */
+  Badges: undefined;
+
   Settings: undefined;
   Login: undefined;
 
@@ -80,6 +86,7 @@ export type TodayScreenProps = NativeStackScreenProps<RootStackParamList, 'Today
 export type TaskDetailScreenProps = NativeStackScreenProps<RootStackParamList, 'TaskDetail'>;
 export type AddEvidenceScreenProps = NativeStackScreenProps<RootStackParamList, 'AddEvidence'>;
 export type EvidenceDetailScreenProps = NativeStackScreenProps<RootStackParamList, 'EvidenceDetail'>;
+export type BadgesScreenProps = NativeStackScreenProps<RootStackParamList, 'Badges'>;
 export type SettingsScreenProps = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
 /**

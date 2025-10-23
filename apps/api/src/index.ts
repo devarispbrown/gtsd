@@ -2,6 +2,7 @@ import { createApp } from './app';
 import { env } from './config/env';
 import { logger } from './config/logger';
 import { initTracing, shutdownTracing } from './config/tracing';
+import { jobScheduler } from './jobs';
 
 const startServer = async () => {
   try {
@@ -17,9 +18,26 @@ const startServer = async () => {
       logger.info(`📈 Metrics: http://localhost:${port}/metrics`);
     });
 
+    // Start background jobs after server is running
+    try {
+      jobScheduler.start();
+      logger.info('⏰ Background jobs started');
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to start background jobs');
+      // Don't exit - server can still run without jobs
+    }
+
     // Graceful shutdown
     const shutdown = async (signal: string) => {
       logger.info(`${signal} received, shutting down gracefully...`);
+
+      // Stop background jobs first
+      try {
+        jobScheduler.stop();
+        logger.info('Background jobs stopped');
+      } catch (error) {
+        logger.error({ err: error }, 'Error stopping background jobs');
+      }
 
       server.close(async () => {
         logger.info('HTTP server closed');
