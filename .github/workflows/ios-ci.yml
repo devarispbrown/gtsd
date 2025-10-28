@@ -1,0 +1,554 @@
+name: iOS CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/ios/**'
+      - '.github/workflows/ios-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'apps/ios/**'
+      - '.github/workflows/ios-ci.yml'
+
+env:
+  XCODE_VERSION: '15.2'
+  IOS_DEPLOYMENT_TARGET: '17.0'
+  FASTLANE_SKIP_UPDATE_CHECK: true
+  FASTLANE_HIDE_TIMESTAMP: true
+
+jobs:
+  # Job 1: Lint and Format Check
+  swiftlint:
+    name: SwiftLint
+    runs-on: macos-14
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Run SwiftLint
+        run: |
+          cd apps/ios/GTSD
+          swiftlint lint --reporter github-actions-logging --strict
+
+      - name: SwiftLint Autocorrect Check
+        run: |
+          cd apps/ios/GTSD
+          swiftlint --fix --format
+          git diff --exit-code || (echo "SwiftLint found fixable issues. Run 'swiftlint --fix' locally." && exit 1)
+
+  # Job 2: Unit Tests (Matrix for multiple devices)
+  unit-tests:
+    name: Unit Tests
+    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        destination:
+          - 'platform=iOS Simulator,name=iPhone 15 Pro,OS=17.2'
+          - 'platform=iOS Simulator,name=iPhone SE (3rd generation),OS=17.2'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+
+      - name: Show Xcode and Swift version
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Cache SPM packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+            .build
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Install dependencies
+        run: |
+          cd apps/ios/GTSD
+          xcodebuild -resolvePackageDependencies -workspace GTSD.xcworkspace -scheme GTSD
+
+      - name: Run Unit Tests
+        run: |
+          cd apps/ios/GTSD
+          xcodebuild test \
+            -workspace GTSD.xcworkspace \
+            -scheme GTSD \
+            -destination '${{ matrix.destination }}' \
+            -testPlan UnitTests \
+            -enableCodeCoverage YES \
+            -resultBundlePath TestResults/UnitTests-${{ strategy.job-index }}.xcresult \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            ONLY_ACTIVE_ARCH=NO
+
+      - name: Upload Unit Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results-${{ strategy.job-index }}
+          path: apps/ios/GTSD/TestResults/UnitTests-${{ strategy.job-index }}.xcresult
+          retention-days: 30
+
+  # Job 3: Integration Tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: macos-14
+    needs: [swiftlint]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+
+      - name: Cache SPM packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+            .build
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Install dependencies
+        run: |
+          cd apps/ios/GTSD
+          xcodebuild -resolvePackageDependencies -workspace GTSD.xcworkspace -scheme GTSD
+
+      - name: Run Integration Tests
+        run: |
+          cd apps/ios/GTSD
+          xcodebuild test \
+            -workspace GTSD.xcworkspace \
+            -scheme GTSD \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=17.2' \
+            -testPlan IntegrationTests \
+            -enableCodeCoverage YES \
+            -resultBundlePath TestResults/IntegrationTests.xcresult \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Upload Integration Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: apps/ios/GTSD/TestResults/IntegrationTests.xcresult
+          retention-days: 30
+
+  # Job 4: UI Tests
+  ui-tests:
+    name: UI Tests
+    runs-on: macos-14
+    needs: [swiftlint]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+
+      - name: Cache SPM packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+            .build
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Install dependencies
+        run: |
+          cd apps/ios/GTSD
+          xcodebuild -resolvePackageDependencies -workspace GTSD.xcworkspace -scheme GTSD
+
+      - name: Run UI Tests
+        run: |
+          cd apps/ios/GTSD
+          xcodebuild test \
+            -workspace GTSD.xcworkspace \
+            -scheme GTSD \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=17.2' \
+            -testPlan UITests \
+            -enableCodeCoverage YES \
+            -resultBundlePath TestResults/UITests.xcresult \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Upload UI Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-results
+          path: apps/ios/GTSD/TestResults/UITests.xcresult
+          retention-days: 30
+
+      - name: Upload UI Test Screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-screenshots
+          path: ~/Library/Developer/Xcode/DerivedData/**/Logs/Test/Attachments
+          retention-days: 7
+
+  # Job 5: Code Coverage
+  code-coverage:
+    name: Code Coverage
+    runs-on: macos-14
+    needs: [unit-tests, integration-tests, ui-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          path: TestResults
+
+      - name: Install coverage tools
+        run: |
+          gem install xcov
+          brew install swiftcov || echo "swiftcov not available, will use xcov only"
+
+      - name: Generate coverage reports
+        run: |
+          cd apps/ios/GTSD
+          # Generate human-readable coverage report
+          xcov \
+            --workspace GTSD.xcworkspace \
+            --scheme GTSD \
+            --minimum_coverage_percentage 80 \
+            --output_directory coverage \
+            --markdown_report \
+            --json_report || echo "xcov failed, continuing..."
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: apps/ios/GTSD/coverage
+          retention-days: 30
+
+      - name: Convert coverage to Cobertura format
+        continue-on-error: true
+        run: |
+          cd apps/ios/GTSD
+          # Try to convert to Cobertura format for Codecov
+          if command -v swiftcov &> /dev/null; then
+            find TestResults -name "*.xcresult" -print0 | xargs -0 -I {} \
+              swiftcov generate {} --output coverage/cobertura.xml --format cobertura
+          fi
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        continue-on-error: true
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: apps/ios/GTSD/coverage/cobertura.xml
+          flags: ios
+          name: ios-coverage
+          fail_ci_if_error: false
+
+      - name: Comment PR with coverage
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const coveragePath = 'apps/ios/GTSD/coverage/coverage.md';
+
+            if (fs.existsSync(coveragePath)) {
+              const coverage = fs.readFileSync(coveragePath, 'utf8');
+
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## iOS Code Coverage Report\n\n${coverage}`
+              });
+            }
+
+  # Job 6: Build for Testing
+  build-for-testing:
+    name: Build for Testing
+    runs-on: macos-14
+    needs: [swiftlint]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+
+      - name: Cache SPM packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+            .build
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Build for Testing
+        run: |
+          cd apps/ios/GTSD
+          xcodebuild build-for-testing \
+            -workspace GTSD.xcworkspace \
+            -scheme GTSD \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=17.2' \
+            -derivedDataPath DerivedData \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Check build artifacts
+        run: |
+          cd apps/ios/GTSD
+          ls -lh DerivedData/Build/Products/Debug-iphonesimulator/
+
+      - name: Check app size
+        run: |
+          cd apps/ios/GTSD
+          APP_PATH="DerivedData/Build/Products/Debug-iphonesimulator/GTSD.app"
+          if [ -d "$APP_PATH" ]; then
+            SIZE_KB=$(du -sk "$APP_PATH" | cut -f1)
+            SIZE_MB=$((SIZE_KB / 1024))
+            echo "App size: ${SIZE_MB}MB (${SIZE_KB}KB)"
+
+            if [ $SIZE_KB -gt 51200 ]; then
+              echo "::warning::App size (${SIZE_MB}MB) exceeds 50MB target"
+            fi
+          fi
+
+  # Job 7: Static Analysis
+  static-analysis:
+    name: Static Analysis
+    runs-on: macos-14
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+
+      - name: Cache SPM packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+            .build
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Run static analysis
+        run: |
+          cd apps/ios/GTSD
+          xcodebuild analyze \
+            -workspace GTSD.xcworkspace \
+            -scheme GTSD \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=17.2' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+
+  # Job 8: Performance Tests
+  performance-tests:
+    name: Performance Benchmarks
+    runs-on: macos-14
+    needs: [swiftlint]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+
+      - name: Cache SPM packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+            .build
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Run performance tests
+        run: |
+          cd apps/ios/GTSD
+          xcodebuild test \
+            -workspace GTSD.xcworkspace \
+            -scheme GTSD \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=17.2' \
+            -testPlan PerformanceTests \
+            -resultBundlePath TestResults/PerformanceTests.xcresult \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO || echo "Performance tests not configured yet"
+
+      - name: Extract performance metrics
+        continue-on-error: true
+        run: |
+          cd apps/ios/GTSD
+          if [ -d "TestResults/PerformanceTests.xcresult" ]; then
+            xcrun xcresulttool get \
+              --path TestResults/PerformanceTests.xcresult \
+              --format json > performance-results.json
+          fi
+
+      - name: Upload performance results
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results
+          path: apps/ios/GTSD/performance-results.json
+          retention-days: 30
+
+  # Job 9: TestFlight Deployment (main branch only)
+  deploy-testflight:
+    name: Deploy to TestFlight
+    runs-on: macos-14
+    needs: [unit-tests, integration-tests, ui-tests, code-coverage, build-for-testing]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+
+      - name: Install Fastlane
+        run: |
+          brew install fastlane
+          cd apps/ios/GTSD/fastlane
+          bundle install || gem install fastlane
+
+      - name: Cache SPM packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+            .build
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Setup code signing
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Create keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+
+          # Import certificate
+          echo "$CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+          security import certificate.p12 \
+            -k build.keychain \
+            -P "$CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          rm certificate.p12
+
+          # Install provisioning profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$PROVISIONING_PROFILE_BASE64" | base64 --decode > \
+            ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+
+      - name: Build and deploy to TestFlight
+        env:
+          FASTLANE_USER: ${{ secrets.APPLE_ID }}
+          FASTLANE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+        run: |
+          cd apps/ios/GTSD
+          fastlane beta
+
+      - name: Cleanup keychain
+        if: always()
+        run: security delete-keychain build.keychain || true
+
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@v1
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        with:
+          payload: |
+            {
+              "text": ":rocket: iOS App deployed to TestFlight!",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*GTSD iOS App deployed to TestFlight* :rocket:\n\n*Branch:* ${{ github.ref_name }}\n*Commit:* ${{ github.sha }}\n*Author:* ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        with:
+          payload: |
+            {
+              "text": ":x: iOS TestFlight deployment failed!",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*GTSD iOS TestFlight deployment failed* :x:\n\n*Branch:* ${{ github.ref_name }}\n*Commit:* ${{ github.sha }}\n*Author:* ${{ github.actor }}\n*Workflow:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                }
+              ]
+            }
+
+  # Job 10: Status Check Summary
+  ci-status:
+    name: CI Status Check
+    runs-on: ubuntu-latest
+    needs: [swiftlint, unit-tests, integration-tests, ui-tests, code-coverage, build-for-testing, static-analysis]
+    if: always()
+    steps:
+      - name: Check all jobs status
+        run: |
+          if [ "${{ needs.swiftlint.result }}" != "success" ] || \
+             [ "${{ needs.unit-tests.result }}" != "success" ] || \
+             [ "${{ needs.integration-tests.result }}" != "success" ] || \
+             [ "${{ needs.ui-tests.result }}" != "success" ] || \
+             [ "${{ needs.code-coverage.result }}" != "success" ] || \
+             [ "${{ needs.build-for-testing.result }}" != "success" ] || \
+             [ "${{ needs.static-analysis.result }}" != "success" ]; then
+            echo "One or more required checks failed"
+            exit 1
+          fi
+          echo "All required checks passed!"

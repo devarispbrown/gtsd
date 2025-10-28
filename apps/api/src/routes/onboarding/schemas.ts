@@ -1,10 +1,5 @@
 import { z } from 'zod';
-import {
-  Gender,
-  ActivityLevel,
-  PrimaryGoal,
-  OnboardingValidation
-} from '@gtsd/shared-types';
+import { ActivityLevel, PrimaryGoal, OnboardingValidation } from '@gtsd/shared-types';
 
 export const partnerSchema = z.object({
   name: z.string().trim().min(1, 'Partner name is required').max(100),
@@ -17,22 +12,37 @@ export const onboardingSchema = z
   .object({
     // Account basics
     dateOfBirth: z.string().datetime('Invalid date format'),
-    gender: z.nativeEnum(Gender),
+    gender: z.string().min(1, 'Gender is required').max(20, 'Gender must be 20 characters or less'),
 
     // Goals
     primaryGoal: z.nativeEnum(PrimaryGoal),
-    targetWeight: z.number().positive('Target weight must be positive').max(OnboardingValidation.MAX_WEIGHT),
+    targetWeight: z
+      .number()
+      .positive('Target weight must be positive')
+      .max(OnboardingValidation.MAX_WEIGHT),
     targetDate: z.string().datetime('Invalid date format'),
     activityLevel: z.nativeEnum(ActivityLevel),
 
     // Health metrics
-    currentWeight: z.number().positive('Current weight must be positive').max(OnboardingValidation.MAX_WEIGHT),
-    height: z.number().positive('Height must be positive').min(OnboardingValidation.MIN_HEIGHT).max(OnboardingValidation.MAX_HEIGHT),
+    currentWeight: z
+      .number()
+      .positive('Current weight must be positive')
+      .max(OnboardingValidation.MAX_WEIGHT),
+    height: z
+      .number()
+      .positive('Height must be positive')
+      .min(OnboardingValidation.MIN_HEIGHT)
+      .max(OnboardingValidation.MAX_HEIGHT),
 
     // Preferences
     dietaryPreferences: z.array(z.string()).default([]),
     allergies: z.array(z.string()).default([]),
-    mealsPerDay: z.number().int().min(OnboardingValidation.MIN_MEALS_PER_DAY).max(OnboardingValidation.MAX_MEALS_PER_DAY).default(3),
+    mealsPerDay: z
+      .number()
+      .int()
+      .min(OnboardingValidation.MIN_MEALS_PER_DAY)
+      .max(OnboardingValidation.MAX_MEALS_PER_DAY)
+      .default(3),
 
     // Partners (optional)
     partners: z.array(partnerSchema).default([]),

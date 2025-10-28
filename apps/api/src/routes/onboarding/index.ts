@@ -6,6 +6,9 @@ import { requireAuth } from '../../middleware/auth';
 import { onboardingSchema } from './schemas';
 import { OnboardingService, type OnboardingResult } from './service';
 import { ZodError } from 'zod';
+import { db } from '../../db/connection';
+import { users } from '../../db/schema';
+import { eq } from 'drizzle-orm';
 
 const router = Router();
 const onboardingService = new OnboardingService();
@@ -48,6 +51,25 @@ router.post(
       );
 
       span.addEvent('onboarding_completed');
+
+      // Fetch updated user to return with hasCompletedOnboarding flag
+      const [user] = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          name: users.name,
+          emailVerified: users.emailVerified,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+        })
+        .from(users)
+        .where(eq(users.id, req.userId!))
+        .limit(1);
+
+      if (!user) {
+        throw new AppError(404, 'User not found');
+      }
+
       span.setStatus({ code: SpanStatusCode.OK });
 
       logger.info(
@@ -59,9 +81,15 @@ router.post(
         'Onboarding completed successfully'
       );
 
+      // Return user object with hasCompletedOnboarding flag
       res.status(201).json({
-        success: true,
-        data: result,
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        emailVerified: user.emailVerified,
+        hasCompletedOnboarding: true, // Always true after completing onboarding
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
       });
     } catch (error) {
       span.setStatus({
@@ -121,10 +149,7 @@ router.get(
         'http.route': '/v1/summary/how-it-works',
       });
 
-      logger.info(
-        { userId: req.userId },
-        'Fetching how-it-works summary'
-      );
+      logger.info({ userId: req.userId }, 'Fetching how-it-works summary');
 
       // Call service to get summary
       // userId is guaranteed to be present due to requireAuth middleware
@@ -154,12 +179,7 @@ router.get(
           'User data not found for summary'
         );
         span.recordException(error);
-        next(
-          new AppError(
-            404,
-            error.message
-          )
-        );
+        next(new AppError(404, error.message));
       } else if (error instanceof AppError) {
         span.recordException(error);
         next(error);

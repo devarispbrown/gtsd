@@ -1,6 +1,6 @@
-import { eq, and, gt, lt } from 'drizzle-orm';
+import { eq, and, gt, lt, isNull } from 'drizzle-orm';
 import { db } from '../../db/connection';
-import { users, refreshTokens, SelectUser } from '../../db/schema';
+import { users, refreshTokens, userSettings, SelectUser } from '../../db/schema';
 import {
   hashPassword,
   comparePassword,
@@ -30,6 +30,7 @@ export interface AuthResponse {
     email: string;
     name: string;
     emailVerified: boolean;
+    hasCompletedOnboarding: boolean;
   };
   accessToken: string;
   refreshToken: string;
@@ -73,6 +74,14 @@ export class AuthService {
 
     logger.info({ userId: newUser.id, email: newUser.email }, 'User created successfully');
 
+    // Check for userSettings to determine onboarding status
+    const [settings] = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, newUser.id));
+
+    const hasCompletedOnboarding = settings?.onboardingCompleted ?? false;
+
     // Generate tokens
     const accessToken = generateAccessToken({
       userId: newUser.id,
@@ -95,6 +104,7 @@ export class AuthService {
         email: newUser.email,
         name: newUser.name,
         emailVerified: newUser.emailVerified,
+        hasCompletedOnboarding,
       },
       accessToken,
       refreshToken: refreshTokenValue,
@@ -130,12 +140,14 @@ export class AuthService {
     }
 
     // Update last login timestamp
-    await db
-      .update(users)
-      .set({ lastLoginAt: new Date() })
-      .where(eq(users.id, user.id));
+    await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
 
     logger.info({ userId: user.id, email: user.email }, 'User logged in successfully');
+
+    // Check for userSettings to determine onboarding status
+    const [settings] = await db.select().from(userSettings).where(eq(userSettings.userId, user.id));
+
+    const hasCompletedOnboarding = settings?.onboardingCompleted ?? false;
 
     // Generate tokens
     const accessToken = generateAccessToken({
@@ -159,6 +171,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         emailVerified: user.emailVerified,
+        hasCompletedOnboarding,
       },
       accessToken,
       refreshToken: refreshTokenValue,
@@ -176,10 +189,7 @@ export class AuthService {
       .select()
       .from(refreshTokens)
       .where(
-        and(
-          eq(refreshTokens.token, refreshTokenValue),
-          gt(refreshTokens.expiresAt, new Date())
-        )
+        and(eq(refreshTokens.token, refreshTokenValue), gt(refreshTokens.expiresAt, new Date()))
       );
 
     if (!tokenRecord) {
@@ -278,7 +288,7 @@ export class AuthService {
       .where(
         and(
           eq(refreshTokens.userId, userId),
-          eq(refreshTokens.revokedAt, null as any) // Not already revoked
+          isNull(refreshTokens.revokedAt) // Not already revoked
         )
       );
 

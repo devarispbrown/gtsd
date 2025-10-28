@@ -16,7 +16,6 @@ const redis = !isTestMode
   ? new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
       maxRetriesPerRequest: 3,
       enableOfflineQueue: true, // Allow commands to queue while connecting
-      lazyConnect: true,
       retryStrategy: (times: number) => {
         if (times > 3) {
           logger.warn('Redis rate limiter max retries exceeded');
@@ -34,11 +33,6 @@ if (redis) {
 
   redis.on('connect', () => {
     logger.info('Redis rate limiter connected');
-  });
-
-  // Connect async
-  redis.connect().catch((err) => {
-    logger.warn({ error: err.message }, 'Redis rate limiter unavailable, using memory store');
   });
 }
 
@@ -112,24 +106,28 @@ export const perUserLimiter = isTestMode
         if (req.userId) {
           return `user_${req.userId}`;
         }
-        // Fall back to IP address (handles both IPv4 and IPv6)
-        return req.ip || req.socket.remoteAddress || 'unknown';
+        // Fall back to IP address
+        const ip = req.ip || req.socket.remoteAddress || 'unknown';
+        return ip;
       },
       handler: (_req, _res, _next, options) => {
-        logger.warn({ limit: options.max, window: options.windowMs }, 'Per-user rate limit exceeded');
+        logger.warn(
+          { limit: options.max, window: options.windowMs },
+          'Per-user rate limit exceeded'
+        );
         throw new AppError(429, 'Too many requests, please try again later');
       },
     });
 
 // Graceful shutdown
 if (redis) {
-  process.on('SIGTERM', async () => {
+  process.on('SIGTERM', () => {
     logger.info('SIGTERM received, disconnecting rate limiter Redis');
-    await redis.quit();
+    void redis.quit();
   });
 
-  process.on('SIGINT', async () => {
+  process.on('SIGINT', () => {
     logger.info('SIGINT received, disconnecting rate limiter Redis');
-    await redis.quit();
+    void redis.quit();
   });
 }

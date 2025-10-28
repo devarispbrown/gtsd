@@ -37,13 +37,20 @@ export class OnboardingService {
     const dateOfBirth = new Date(input.dateOfBirth);
     const age = calculateAge(dateOfBirth);
 
+    // Normalize gender for health calculations
+    // If custom gender (not male/female/other), treat as "other" for BMR/TDEE calculations
+    const normalizedGender: Gender =
+      input.gender === 'male' || input.gender === 'female' || input.gender === 'other'
+        ? input.gender
+        : 'other';
+
     // Calculate health targets
     const targets = calculateHealthTargets(
       {
         weight: input.currentWeight,
         height: input.height,
         age,
-        gender: input.gender as Gender,
+        gender: normalizedGender,
         activityLevel: input.activityLevel as ActivityLevel,
       },
       input.primaryGoal as Goal
