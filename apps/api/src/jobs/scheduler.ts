@@ -1,13 +1,25 @@
 import { DailyComplianceJob } from './daily-compliance-check';
+import { WeeklyRecomputeJob } from './weekly-recompute';
 import { logger } from '../config/logger';
+import cron from 'node-cron';
+
+/**
+ * Base interface for all jobs
+ */
+interface BaseJob {
+  run(): Promise<unknown>;
+  stop?(): void;
+  getStatus?(): string | { isScheduled: boolean; cronExpression: string };
+}
 
 /**
  * Job scheduler - manages all background cron jobs
  * Provides centralized control for starting, stopping, and managing jobs
  */
 export class JobScheduler {
-  private jobs: Map<string, any> = new Map();
-  private isRunning: boolean = false;
+  private jobs: Map<string, BaseJob> = new Map();
+  private scheduledTasks: Map<string, cron.ScheduledTask> = new Map();
+  private isRunning = false;
 
   /**
    * Start all scheduled jobs
@@ -27,11 +39,16 @@ export class JobScheduler {
       dailyComplianceJob.schedule();
       this.jobs.set('daily-compliance', dailyComplianceJob);
 
-      // Add more jobs here as needed
-      // Example:
-      // const weeklyReportJob = new WeeklyReportJob();
-      // weeklyReportJob.schedule();
-      // this.jobs.set('weekly-report', weeklyReportJob);
+      // Weekly recompute job - runs every Sunday at 2:00 AM
+      const weeklyRecomputeJob = new WeeklyRecomputeJob();
+      const weeklyTask = cron.schedule('0 2 * * 0', () => {
+        logger.info('Running scheduled weekly recompute job');
+        void weeklyRecomputeJob.run().catch((error: unknown) => {
+          logger.error({ err: error }, 'Weekly recompute job failed');
+        });
+      });
+      this.jobs.set('weekly-recompute', weeklyRecomputeJob);
+      this.scheduledTasks.set('weekly-recompute', weeklyTask);
 
       this.isRunning = true;
 
@@ -58,10 +75,20 @@ export class JobScheduler {
     logger.info('Stopping job scheduler');
 
     try {
+      // Stop all cron tasks
+      for (const [name, task] of this.scheduledTasks.entries()) {
+        try {
+          task.stop();
+          logger.info({ jobName: name }, 'Cron task stopped');
+        } catch (error) {
+          logger.error({ err: error, jobName: name }, 'Error stopping cron task');
+        }
+      }
+
       // Stop all jobs
       for (const [name, job] of this.jobs.entries()) {
         try {
-          if (typeof job.stop === 'function') {
+          if (job.stop) {
             job.stop();
             logger.info({ jobName: name }, 'Job stopped');
           }
@@ -70,6 +97,7 @@ export class JobScheduler {
         }
       }
 
+      this.scheduledTasks.clear();
       this.jobs.clear();
       this.isRunning = false;
 
@@ -86,7 +114,7 @@ export class JobScheduler {
    * @param jobName - Name of the job to retrieve
    * @returns The job instance or undefined
    */
-  getJob(jobName: string): any {
+  getJob(jobName: string): BaseJob | undefined {
     return this.jobs.get(jobName);
   }
 
@@ -98,12 +126,14 @@ export class JobScheduler {
   getStatus(): {
     isRunning: boolean;
     jobCount: number;
-    jobs: Array<{ name: string; status: any }>;
+    jobs: Array<{ name: string; status: string }>;
   } {
-    const jobStatuses = Array.from(this.jobs.entries()).map(([name, job]) => ({
-      name,
-      status: typeof job.getStatus === 'function' ? job.getStatus() : 'unknown',
-    }));
+    const jobStatuses = Array.from(this.jobs.entries()).map(([name, job]) => {
+      const rawStatus = job.getStatus?.() ?? 'unknown';
+      const status =
+        typeof rawStatus === 'string' ? rawStatus : `scheduled (${rawStatus.cronExpression})`;
+      return { name, status };
+    });
 
     return {
       isRunning: this.isRunning,
@@ -122,10 +152,6 @@ export class JobScheduler {
 
     if (!job) {
       throw new Error(`Job not found: ${jobName}`);
-    }
-
-    if (typeof job.run !== 'function') {
-      throw new Error(`Job does not have a run method: ${jobName}`);
     }
 
     logger.info({ jobName }, 'Manually triggering job');

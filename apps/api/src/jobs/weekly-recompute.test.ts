@@ -1,7 +1,7 @@
-import { weeklyRecomputeJob, WeeklyRecomputeJob } from './weekly-recompute';
+import { weeklyRecomputeJob } from './weekly-recompute';
 import { db } from '../db/connection';
 import { users, userSettings, initialPlanSnapshot } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 describe('WeeklyRecomputeJob', () => {
   let testUserIds: number[] = [];
@@ -335,15 +335,9 @@ describe('WeeklyRecomputeJob', () => {
         expect(update.reason.length).toBeGreaterThan(0);
 
         // Reason should mention what changed
-        const validReasons = [
-          'calories changed',
-          'protein changed',
-          'weight changed',
-        ];
+        const validReasons = ['calories changed', 'protein changed', 'weight changed'];
 
-        const hasValidReason = validReasons.some((reason) =>
-          update.reason.includes(reason)
-        );
+        const hasValidReason = validReasons.some((reason) => update.reason.includes(reason));
 
         expect(hasValidReason).toBe(true);
       }
@@ -387,7 +381,7 @@ describe('WeeklyRecomputeJob', () => {
     });
 
     it('should handle maintenance goal correctly', async () => {
-      const result = await weeklyRecomputeJob.run();
+      await weeklyRecomputeJob.run();
 
       // Find user 2 in results (maintenance goal)
       const [user2Settings] = await db
@@ -418,16 +412,31 @@ describe('WeeklyRecomputeJob', () => {
 // Helper functions
 
 async function cleanupTestUsers() {
-  await db.delete(initialPlanSnapshot);
-  await db.delete(userSettings);
-  await db.delete(users).where(
-    eq(users.email, 'recompute1@example.com') ||
-      eq(users.email, 'recompute2@example.com') ||
-      eq(users.email, 'recompute3@example.com') ||
-      eq(users.email, 'recompute4@example.com') ||
-      eq(users.email, 'invalid-user@example.com') ||
-      eq(users.email, 'no-settings@example.com')
-  );
+  const testEmails = [
+    'recompute1@example.com',
+    'recompute2@example.com',
+    'recompute3@example.com',
+    'recompute4@example.com',
+    'invalid-user@example.com',
+    'no-settings@example.com',
+  ];
+
+  // Get user IDs first
+  const testUsers = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(inArray(users.email, testEmails));
+
+  const testUserIds = testUsers.map((u) => u.id);
+
+  if (testUserIds.length > 0) {
+    // Delete related records first
+    await db.delete(initialPlanSnapshot).where(inArray(initialPlanSnapshot.userId, testUserIds));
+    await db.delete(userSettings).where(inArray(userSettings.userId, testUserIds));
+
+    // Delete users
+    await db.delete(users).where(inArray(users.id, testUserIds));
+  }
 }
 
 async function createTestUser(config: {

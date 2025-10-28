@@ -9,3 +9,4 @@
 
 export { jobScheduler, JobScheduler } from './scheduler';
 export { DailyComplianceJob } from './daily-compliance-check';
+export { weeklyRecomputeJob, WeeklyRecomputeJob } from './weekly-recompute';

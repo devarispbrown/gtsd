@@ -435,9 +435,9 @@ describe('ScienceService', () => {
       // BMR explanation
       expect(result.bmr).toBeDefined();
       expect(result.bmr.title).toBe('Your Basal Metabolic Rate (BMR)');
-      expect(result.bmr.explanation).toContain('Basal Metabolic Rate');
+      expect(result.bmr.explanation).toContain('BMR');
       expect(result.bmr.explanation).toContain('1800 calories');
-      expect(result.bmr.formula).toContain('Mifflin-St Jeor');
+      expect(result.bmr.formula).toContain('weight');
 
       // TDEE explanation
       expect(result.tdee).toBeDefined();

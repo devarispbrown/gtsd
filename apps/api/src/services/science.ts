@@ -9,53 +9,42 @@ import type {
   ScienceInputs,
   ComputedTargets,
   WhyItWorks,
+  ActivityLevelValue,
+  PrimaryGoalValue,
+  GenderValue,
+} from '@gtsd/shared-types';
+import {
+  ACTIVITY_MULTIPLIERS,
+  PROTEIN_PER_KG,
+  WEEKLY_RATES,
+  WATER_ML_PER_KG,
+  WEIGHT_LOSS_DEFICIT,
+  MUSCLE_GAIN_SURPLUS,
+  VALIDATION_RANGES,
+  ACTIVITY_LEVELS,
+  PRIMARY_GOALS,
+  GENDERS,
 } from '@gtsd/shared-types';
 
 const tracer = trace.getTracer('science-service');
 
 /**
  * Validation schema for science inputs
+ * Uses validation ranges from shared-types for consistency
  */
 const scienceInputsSchema = z.object({
-  weight: z.number().min(30).max(300),
-  height: z.number().min(100).max(250),
-  age: z.number().int().min(13).max(120),
-  gender: z.enum(['male', 'female', 'other']),
-  activityLevel: z.enum(['sedentary', 'lightly_active', 'moderately_active', 'very_active', 'extremely_active']),
-  primaryGoal: z.enum(['lose_weight', 'gain_muscle', 'maintain', 'improve_health']),
-  targetWeight: z.number().min(30).max(300).optional(),
+  weight: z.number().min(VALIDATION_RANGES.weight.min).max(VALIDATION_RANGES.weight.max),
+  height: z.number().min(VALIDATION_RANGES.height.min).max(VALIDATION_RANGES.height.max),
+  age: z.number().int().min(VALIDATION_RANGES.age.min).max(VALIDATION_RANGES.age.max),
+  gender: z.enum(GENDERS),
+  activityLevel: z.enum(ACTIVITY_LEVELS),
+  primaryGoal: z.enum(PRIMARY_GOALS),
+  targetWeight: z
+    .number()
+    .min(VALIDATION_RANGES.targetWeight.min)
+    .max(VALIDATION_RANGES.targetWeight.max)
+    .optional(),
 });
-
-/**
- * Activity level multipliers for TDEE calculation
- */
-const ACTIVITY_MULTIPLIERS = {
-  sedentary: 1.2,
-  lightly_active: 1.375,
-  moderately_active: 1.55,
-  very_active: 1.725,
-  extremely_active: 1.9,
-} as const;
-
-/**
- * Protein requirements by goal (grams per kg)
- */
-const PROTEIN_PER_KG = {
-  lose_weight: 2.2,      // Preserve muscle during cut
-  gain_muscle: 2.4,      // Build muscle during bulk
-  maintain: 1.8,         // Maintenance
-  improve_health: 1.8,   // General health
-} as const;
-
-/**
- * Weekly weight change rates by goal (kg per week)
- */
-const WEEKLY_RATES = {
-  lose_weight: -0.5,     // Safe fat loss
-  gain_muscle: 0.4,      // Lean bulk
-  maintain: 0,           // No change
-  improve_health: 0,     // No change
-} as const;
 
 /**
  * Comprehensive science service for BMR/TDEE calculations and plan generation
@@ -78,7 +67,7 @@ export class ScienceService {
    * - Women: offset = -161
    * - Other: average of both (-78)
    */
-  calculateBMR(weight: number, height: number, age: number, gender: 'male' | 'female' | 'other'): number {
+  calculateBMR(weight: number, height: number, age: number, gender: GenderValue): number {
     const span = tracer.startSpan('science.calculate_bmr');
 
     try {
@@ -128,7 +117,7 @@ export class ScienceService {
    * @param activityLevel - User's activity level
    * @returns TDEE in kcal/day (rounded to integer)
    */
-  calculateTDEE(bmr: number, activityLevel: ScienceInputs['activityLevel']): number {
+  calculateTDEE(bmr: number, activityLevel: ActivityLevelValue): number {
     const span = tracer.startSpan('science.calculate_tdee');
 
     try {
@@ -166,7 +155,7 @@ export class ScienceService {
    * - maintain: TDEE (maintenance)
    * - improve_health: TDEE (maintenance)
    */
-  calculateCalorieTarget(tdee: number, goal: ScienceInputs['primaryGoal']): number {
+  calculateCalorieTarget(tdee: number, goal: PrimaryGoalValue): number {
     const span = tracer.startSpan('science.calculate_calorie_target');
 
     try {
@@ -174,10 +163,10 @@ export class ScienceService {
 
       switch (goal) {
         case 'lose_weight':
-          calorieTarget = Math.round(tdee - 500);
+          calorieTarget = Math.round(tdee - WEIGHT_LOSS_DEFICIT);
           break;
         case 'gain_muscle':
-          calorieTarget = Math.round(tdee + 400);
+          calorieTarget = Math.round(tdee + MUSCLE_GAIN_SURPLUS);
           break;
         case 'maintain':
         case 'improve_health':
@@ -216,7 +205,7 @@ export class ScienceService {
    * - maintain: 1.8g/kg (maintenance)
    * - improve_health: 1.8g/kg (general health)
    */
-  calculateProteinTarget(weight: number, goal: ScienceInputs['primaryGoal']): number {
+  calculateProteinTarget(weight: number, goal: PrimaryGoalValue): number {
     const span = tracer.startSpan('science.calculate_protein_target');
 
     try {
@@ -255,7 +244,7 @@ export class ScienceService {
     const span = tracer.startSpan('science.calculate_water_target');
 
     try {
-      const mlPerKg = 35;
+      const mlPerKg = WATER_ML_PER_KG;
       const rawTarget = weight * mlPerKg;
       // Round to nearest 100ml for user-friendly targets
       const waterTarget = Math.round(rawTarget / 100) * 100;
@@ -289,7 +278,7 @@ export class ScienceService {
    * - maintain: 0 kg/week (no change)
    * - improve_health: 0 kg/week (no change)
    */
-  calculateWeeklyRate(goal: ScienceInputs['primaryGoal']): number {
+  calculateWeeklyRate(goal: PrimaryGoalValue): number {
     return WEEKLY_RATES[goal];
   }
 
@@ -308,7 +297,9 @@ export class ScienceService {
     currentWeight: number,
     targetWeight: number,
     weeklyRate: number
-  ): { estimatedWeeks: number; projectedDate: Date } | { estimatedWeeks: undefined; projectedDate: undefined } {
+  ):
+    | { estimatedWeeks: number; projectedDate: Date }
+    | { estimatedWeeks: undefined; projectedDate: undefined } {
     const span = tracer.startSpan('science.calculate_projection');
 
     try {
@@ -389,11 +380,13 @@ export class ScienceService {
       // Extract and validate required fields
       const weight = settings.weight ? parseFloat(settings.weight.toString()) : null;
       const height = settings.height ? parseFloat(settings.height.toString()) : null;
-      const targetWeight = settings.targetWeight ? parseFloat(settings.targetWeight.toString()) : undefined;
+      const targetWeight = settings.targetWeight
+        ? parseFloat(settings.targetWeight.toString())
+        : undefined;
       const dateOfBirth = settings.dateOfBirth;
-      const gender = settings.gender as 'male' | 'female' | 'other' | null;
-      const activityLevel = settings.activityLevel as ScienceInputs['activityLevel'] | null;
-      const primaryGoal = settings.primaryGoal as ScienceInputs['primaryGoal'] | null;
+      const gender = settings.gender as GenderValue | null;
+      const activityLevel = settings.activityLevel as ActivityLevelValue | null;
+      const primaryGoal = settings.primaryGoal as PrimaryGoalValue | null;
 
       // Validate required fields exist
       if (!weight || !height || !dateOfBirth || !gender || !activityLevel || !primaryGoal) {
@@ -417,7 +410,9 @@ export class ScienceService {
       // Validate all inputs
       const validationResult = scienceInputsSchema.safeParse(inputs);
       if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`);
+        const errors = validationResult.error.issues.map(
+          (issue) => `${issue.path.join('.')}: ${issue.message}`
+        );
         throw new AppError(400, `Invalid input parameters: ${errors.join(', ')}`);
       }
 
@@ -527,7 +522,7 @@ export class ScienceService {
     try {
       const activityMultiplier = ACTIVITY_MULTIPLIERS[inputs.activityLevel];
       const gramsPerKg = PROTEIN_PER_KG[inputs.primaryGoal];
-      const mlPerKg = 35;
+      const mlPerKg = WATER_ML_PER_KG;
       const deficit = targets.tdee - targets.calorieTarget;
 
       const whyItWorks: WhyItWorks = {
@@ -540,15 +535,18 @@ export class ScienceService {
           title: 'Your Total Daily Energy Expenditure (TDEE)',
           explanation: `Your TDEE is ${targets.tdee} calories - your total daily calorie burn including all activity. We multiply your BMR by ${activityMultiplier} to account for your ${inputs.activityLevel.replace('_', ' ')} lifestyle. This gives us your maintenance calories - eat this amount and your weight stays stable.`,
           activityMultiplier,
+          metric: activityMultiplier,
         },
         calorieTarget: {
           title: 'Your Daily Calorie Target',
-          explanation: deficit > 0
-            ? `To ${inputs.primaryGoal.replace('_', ' ')}, you need a ${Math.abs(deficit)} calorie deficit. This creates a safe energy gap that forces your body to tap into fat stores. At this rate, you'll lose approximately ${Math.abs(targets.weeklyRate)} kg per week - sustainable and muscle-preserving.`
-            : deficit < 0
-            ? `To ${inputs.primaryGoal.replace('_', ' ')}, you need a ${Math.abs(deficit)} calorie surplus. This provides extra energy for muscle protein synthesis and recovery. At this rate, you'll gain approximately ${targets.weeklyRate} kg per week - mostly lean mass when paired with strength training.`
-            : `To ${inputs.primaryGoal.replace('_', ' ')}, you'll eat at maintenance (${targets.calorieTarget} calories). This keeps your weight stable while you focus on body recomposition, performance, or general health improvements.`,
+          explanation:
+            deficit > 0
+              ? `To ${inputs.primaryGoal.replace('_', ' ')}, you need a ${Math.abs(deficit)} calorie deficit. This creates a safe energy gap that forces your body to tap into fat stores. At this rate, you'll lose approximately ${Math.abs(targets.weeklyRate)} kg per week - sustainable and muscle-preserving.`
+              : deficit < 0
+                ? `To ${inputs.primaryGoal.replace('_', ' ')}, you need a ${Math.abs(deficit)} calorie surplus. This provides extra energy for muscle protein synthesis and recovery. At this rate, you'll gain approximately ${targets.weeklyRate} kg per week - mostly lean mass when paired with strength training.`
+                : `To ${inputs.primaryGoal.replace('_', ' ')}, you'll eat at maintenance (${targets.calorieTarget} calories). This keeps your weight stable while you focus on body recomposition, performance, or general health improvements.`,
           deficit,
+          metric: deficit,
         },
         proteinTarget: {
           title: 'Your Daily Protein Target',
@@ -556,15 +554,17 @@ export class ScienceService {
             inputs.primaryGoal === 'lose_weight'
               ? 'During weight loss, high protein prevents muscle loss and keeps you feeling full. Your body needs this to maintain lean mass while in a deficit.'
               : inputs.primaryGoal === 'gain_muscle'
-              ? 'For muscle building, protein provides amino acids needed for muscle protein synthesis. This higher intake supports recovery and new muscle growth.'
-              : 'Adequate protein supports muscle maintenance, satiety, and overall health. It helps preserve lean mass and supports metabolic function.'
+                ? 'For muscle building, protein provides amino acids needed for muscle protein synthesis. This higher intake supports recovery and new muscle growth.'
+                : 'Adequate protein supports muscle maintenance, satiety, and overall health. It helps preserve lean mass and supports metabolic function.'
           }`,
           gramsPerKg,
+          metric: gramsPerKg,
         },
         waterTarget: {
           title: 'Your Daily Hydration Target',
           explanation: `Aim for ${targets.waterTarget}ml of water daily (${mlPerKg}ml per kg). Proper hydration supports performance, recovery, appetite regulation, and metabolic function. Water helps transport nutrients, regulate temperature, and maintain energy levels throughout the day.`,
           mlPerKg,
+          metric: mlPerKg,
         },
         timeline: {
           title: 'Your Projected Timeline',
@@ -573,6 +573,7 @@ export class ScienceService {
             : `Since you're focused on ${inputs.primaryGoal.replace('_', ' ')}, there's no specific weight timeline. Focus on consistency with your daily habits and let your body adapt over time.`,
           weeklyRate: targets.weeklyRate,
           estimatedWeeks: targets.estimatedWeeks || 0,
+          metric: targets.weeklyRate,
         },
       };
 

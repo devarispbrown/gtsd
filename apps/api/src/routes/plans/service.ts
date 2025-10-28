@@ -1,10 +1,5 @@
 import { db } from '../../db/connection';
-import {
-  plans,
-  userSettings,
-  initialPlanSnapshot,
-  SelectUserSettings,
-} from '../../db/schema';
+import { plans, userSettings, initialPlanSnapshot, SelectUserSettings } from '../../db/schema';
 import { eq, desc, sql } from 'drizzle-orm';
 import { AppError } from '../../middleware/error';
 import { logger } from '../../config/logger';
@@ -15,6 +10,9 @@ import type {
   ComputedTargets,
   WhyItWorks,
   ScienceInputs,
+  PrimaryGoalValue,
+  ActivityLevelValue,
+  GenderValue,
 } from '@gtsd/shared-types';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 
@@ -91,9 +89,7 @@ export class PlansService {
         const [recentPlan] = await db
           .select()
           .from(plans)
-          .where(
-            sql`${plans.userId} = ${userId} AND ${plans.startDate} >= ${sevenDaysAgo}`
-          )
+          .where(sql`${plans.userId} = ${userId} AND ${plans.startDate} >= ${sevenDaysAgo}`)
           .orderBy(desc(plans.createdAt))
           .limit(1);
 
@@ -114,17 +110,14 @@ export class PlansService {
           };
 
           // Calculate weekly rate from goal
-          const primaryGoal = settings.primaryGoal as ScienceInputs['primaryGoal'];
+          const primaryGoal = settings.primaryGoal as PrimaryGoalValue;
           if (primaryGoal) {
             currentTargets.weeklyRate = scienceService.calculateWeeklyRate(primaryGoal);
           }
 
           // Get WhyItWorks explanation
           const scienceInputs = this.buildScienceInputs(settings);
-          const whyItWorks = scienceService.getWhyItWorksExplanation(
-            currentTargets,
-            scienceInputs
-          );
+          const whyItWorks = scienceService.getWhyItWorksExplanation(currentTargets, scienceInputs);
 
           const duration = performance.now() - startTime;
           span.setAttributes({ 'response.time_ms': duration });
@@ -387,10 +380,7 @@ export class PlansService {
       const shouldUpdate = caloriesDiff > 50 || proteinDiff > 10;
 
       if (!shouldUpdate) {
-        logger.info(
-          { userId, caloriesDiff, proteinDiff },
-          'No significant changes in targets'
-        );
+        logger.info({ userId, caloriesDiff, proteinDiff }, 'No significant changes in targets');
 
         span.setStatus({ code: SpanStatusCode.OK });
         return {
@@ -515,9 +505,9 @@ export class PlansService {
       weight,
       height,
       age,
-      gender: (settings.gender as 'male' | 'female' | 'other') || 'other',
-      activityLevel: (settings.activityLevel as ScienceInputs['activityLevel']) || 'sedentary',
-      primaryGoal: (settings.primaryGoal as ScienceInputs['primaryGoal']) || 'maintain',
+      gender: (settings.gender as GenderValue) || 'other',
+      activityLevel: (settings.activityLevel as ActivityLevelValue) || 'sedentary',
+      primaryGoal: (settings.primaryGoal as PrimaryGoalValue) || 'maintain',
       targetWeight,
     };
   }
@@ -549,14 +539,10 @@ export class PlansService {
     parts.push(whyItWorks.calorieTarget.explanation);
 
     // Add protein explanation
-    parts.push(
-      `You'll consume ${targets.proteinTarget}g of protein daily to support your goals.`
-    );
+    parts.push(`You'll consume ${targets.proteinTarget}g of protein daily to support your goals.`);
 
     // Add hydration target
-    parts.push(
-      `Stay hydrated with ${targets.waterTarget}ml of water throughout the day.`
-    );
+    parts.push(`Stay hydrated with ${targets.waterTarget}ml of water throughout the day.`);
 
     return parts.join(' ');
   }

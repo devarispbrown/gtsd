@@ -39,5 +39,8 @@ export * from './streaks';
 // Science and health calculations types
 export * from './science';
 
+// Science type guards and validation
+export * from './science-guards';
+
 // Type guards
 export * from './type-guards';
