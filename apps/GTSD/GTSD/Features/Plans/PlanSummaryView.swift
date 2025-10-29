@@ -8,8 +8,16 @@
 import SwiftUI
 
 struct PlanSummaryView: View {
-    @StateObject private var viewModel = PlanSummaryViewModel()
+    @StateObject private var planStore: PlanStore
+    @StateObject private var viewModel: PlanSummaryViewModel
     @State private var expandedSections: Set<String> = []
+    @State private var showChangeAlert = false
+
+    init(planStore: PlanStore? = nil) {
+        let store = planStore ?? PlanStore(planService: ServiceContainer.shared.planService)
+        _planStore = StateObject(wrappedValue: store)
+        _viewModel = StateObject(wrappedValue: PlanSummaryViewModel(planStore: store))
+    }
 
     var body: some View {
         NavigationStack {
@@ -17,8 +25,8 @@ struct PlanSummaryView: View {
                 if viewModel.isLoading && viewModel.planData == nil {
                     ProgressView("Loading your plan...")
                         .progressViewStyle(.circular)
-                } else if let errorMessage = viewModel.errorMessage, viewModel.planData == nil {
-                    ErrorView(message: errorMessage, retryAction: {
+                } else if let planError = viewModel.planError, viewModel.planData == nil {
+                    ErrorView(message: planError.localizedDescription ?? "An error occurred", retryAction: {
                         _Concurrency.Task {
                             await viewModel.fetchPlanSummary()
                         }
@@ -26,6 +34,16 @@ struct PlanSummaryView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: Spacing.lg) {
+                            // Recomputation Banner (if plan was recomputed)
+                            if viewModel.hasSignificantChanges {
+                                recomputationBanner
+                            }
+
+                            // Last Updated Info
+                            if let timeSinceUpdate = viewModel.timeSinceUpdate {
+                                lastUpdatedBanner(timeSinceUpdate: timeSinceUpdate)
+                            }
+
                             // Header Section
                             headerSection
 
@@ -69,14 +87,35 @@ struct PlanSummaryView: View {
                             .foregroundColor(.primaryColor)
                     }
                     .disabled(viewModel.isLoading)
+                    .accessibilityLabel("Refresh plan")
+                    .accessibilityHint("Double tap to reload your nutrition plan from the server")
+                    .minimumTouchTarget()
                 }
             }
-            .alert("Error", isPresented: .constant(viewModel.errorMessage != nil && viewModel.planData != nil)) {
-                Button("OK") {
-                    viewModel.errorMessage = nil
+            .alert("Plan Updated", isPresented: $showChangeAlert) {
+                Button("OK", role: .cancel) {
+                    showChangeAlert = false
                 }
             } message: {
-                Text(viewModel.errorMessage ?? "")
+                if let timelineChange = viewModel.formatTimelineChange() {
+                    Text(timelineChange)
+                }
+            }
+            .alert("Error", isPresented: .constant(viewModel.planError != nil && viewModel.planData != nil)) {
+                Button("OK") {
+                    viewModel.clearErrors()
+                }
+                if viewModel.planError?.isRetryable == true {
+                    Button("Retry") {
+                        _Concurrency.Task {
+                            await viewModel.refreshPlan()
+                        }
+                    }
+                }
+            } message: {
+                if let error = viewModel.planError {
+                    Text(error.localizedDescription ?? "An error occurred")
+                }
             }
             .task {
                 if viewModel.planData == nil {
@@ -84,6 +123,71 @@ struct PlanSummaryView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Banners
+
+    private var recomputationBanner: some View {
+        GTSDCard(padding: Spacing.md) {
+            HStack(spacing: Spacing.sm) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.system(size: IconSize.md))
+                    .foregroundColor(.primaryColor)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    Text("Plan Updated")
+                        .font(.labelLarge)
+                        .foregroundColor(.textPrimary)
+
+                    if let timelineChange = viewModel.formatTimelineChange() {
+                        Text(timelineChange)
+                            .font(.bodySmall)
+                            .foregroundColor(.textSecondary)
+                    }
+
+                    if let calorieChange = viewModel.formatCalorieChange() {
+                        Text(calorieChange)
+                            .font(.bodySmall)
+                            .foregroundColor(.textSecondary)
+                    }
+
+                    if let proteinChange = viewModel.formatProteinChange() {
+                        Text(proteinChange)
+                            .font(.bodySmall)
+                            .foregroundColor(.textSecondary)
+                    }
+                }
+
+                Spacer()
+            }
+        }
+        .padding(.horizontal, Spacing.xl)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Plan updated")
+        .accessibilityHint("Your nutrition plan has been recalculated with new targets")
+    }
+
+    private func lastUpdatedBanner(timeSinceUpdate: String) -> some View {
+        HStack {
+            Image(systemName: "clock")
+                .font(.system(size: IconSize.xs))
+                .foregroundColor(.textTertiary)
+
+            Text("Last updated \(timeSinceUpdate)")
+                .font(.bodySmall)
+                .foregroundColor(.textTertiary)
+
+            if viewModel.isStale {
+                Text("• Outdated")
+                    .font(.bodySmall)
+                    .foregroundColor(.orange)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, Spacing.xl)
+        .padding(.vertical, Spacing.xs)
     }
 
     // MARK: - Header Section
@@ -254,31 +358,64 @@ struct PlanSummaryView: View {
 
                 Divider()
 
+                // BMR
+                whyItWorksItem(
+                    icon: "flame",
+                    color: .red,
+                    title: whyItWorks.bmr.title,
+                    explanation: whyItWorks.bmr.explanation,
+                    metric: whyItWorks.bmr.formula,
+                    sectionId: "bmr"
+                )
+
+                // TDEE
+                whyItWorksItem(
+                    icon: "bolt.fill",
+                    color: .yellow,
+                    title: whyItWorks.tdee.title,
+                    explanation: whyItWorks.tdee.explanation,
+                    metric: "Activity multiplier: \(String(format: "%.2f", whyItWorks.tdee.activityMultiplier))",
+                    sectionId: "tdee"
+                )
+
+                // Calorie Target
                 whyItWorksItem(
                     icon: "flame.fill",
                     color: .orange,
                     title: whyItWorks.calorieTarget.title,
                     explanation: whyItWorks.calorieTarget.explanation,
-                    science: whyItWorks.calorieTarget.science,
+                    metric: whyItWorks.calorieTarget.deficit > 0 ? "\(whyItWorks.calorieTarget.deficit) cal deficit" : whyItWorks.calorieTarget.deficit < 0 ? "\(abs(whyItWorks.calorieTarget.deficit)) cal surplus" : "Maintenance",
                     sectionId: "calories"
                 )
 
+                // Protein Target
                 whyItWorksItem(
                     icon: "leaf.fill",
                     color: .green,
                     title: whyItWorks.proteinTarget.title,
                     explanation: whyItWorks.proteinTarget.explanation,
-                    science: whyItWorks.proteinTarget.science,
+                    metric: "\(String(format: "%.1f", whyItWorks.proteinTarget.gramsPerKg))g per kg body weight",
                     sectionId: "protein"
                 )
 
+                // Water Target
                 whyItWorksItem(
                     icon: "drop.fill",
                     color: .blue,
                     title: whyItWorks.waterTarget.title,
                     explanation: whyItWorks.waterTarget.explanation,
-                    science: whyItWorks.waterTarget.science,
+                    metric: "\(whyItWorks.waterTarget.mlPerKg)ml per kg body weight",
                     sectionId: "water"
+                )
+
+                // Timeline
+                whyItWorksItem(
+                    icon: "chart.line.uptrend.xyaxis",
+                    color: .purple,
+                    title: whyItWorks.timeline.title,
+                    explanation: whyItWorks.timeline.explanation,
+                    metric: whyItWorks.timeline.estimatedWeeks > 0 ? "~\(whyItWorks.timeline.estimatedWeeks) weeks to goal" : "Maintenance mode",
+                    sectionId: "timeline"
                 )
             }
         }
@@ -349,6 +486,8 @@ struct PlanSummaryView: View {
             }
         }
         .padding(.horizontal, Spacing.xl)
+        .accessibilityLabel("Recalculate nutrition plan")
+        .accessibilityHint("Double tap to refresh your plan based on current health metrics and goals")
     }
 
     // MARK: - Helper Views
@@ -360,6 +499,7 @@ struct PlanSummaryView: View {
                     .font(.system(size: IconSize.md))
                     .foregroundColor(color)
                     .frame(width: IconSize.lg)
+                    .accessibilityHidden(true)
 
                 Text(label)
                     .font(.bodyMedium)
@@ -382,6 +522,9 @@ struct PlanSummaryView: View {
                 }
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
+        .accessibilityValue(subtitle ?? "")
     }
 
     private func targetRow(icon: String, color: Color, label: String, value: String, progress: Double?) -> some View {
@@ -391,6 +534,7 @@ struct PlanSummaryView: View {
                     .font(.system(size: IconSize.md))
                     .foregroundColor(color)
                     .frame(width: IconSize.lg)
+                    .accessibilityHidden(true)
 
                 Text(label)
                     .font(.bodyMedium)
@@ -407,11 +551,16 @@ struct PlanSummaryView: View {
             if let progress = progress {
                 ProgressView(value: progress, total: 1.0)
                     .tint(.primaryColor)
+                    .accessibilityLabel("Progress")
+                    .accessibilityValue("\(Int(progress * 100)) percent")
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Daily \(label.lowercased()) target")
+        .accessibilityValue(value)
     }
 
-    private func whyItWorksItem(icon: String, color: Color, title: String, explanation: String, science: String, sectionId: String) -> some View {
+    private func whyItWorksItem(icon: String, color: Color, title: String, explanation: String, metric: String, sectionId: String) -> some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             HStack(alignment: .top, spacing: Spacing.sm) {
                 Image(systemName: icon)
@@ -433,11 +582,11 @@ struct PlanSummaryView: View {
                             Divider()
                                 .padding(.vertical, Spacing.xs)
 
-                            Text("The Science")
+                            Text("Key Metric")
                                 .font(.labelMedium)
                                 .foregroundColor(.textPrimary)
 
-                            Text(science)
+                            Text(metric)
                                 .font(.bodySmall)
                                 .foregroundColor(.textSecondary)
                         }
@@ -457,12 +606,15 @@ struct PlanSummaryView: View {
                         }
                         .foregroundColor(.primaryColor)
                     }
+                    .accessibilityLabel(expandedSections.contains(sectionId) ? "Show less about \(title)" : "Learn more about \(title)")
+                    .accessibilityHint("Double tap to \(expandedSections.contains(sectionId) ? "hide" : "show") scientific explanation")
+                    .minimumTouchTarget()
                 }
 
                 Spacer()
             }
 
-            if sectionId != "water" {
+            if sectionId != "timeline" {
                 Divider()
                     .padding(.vertical, Spacing.xs)
             }

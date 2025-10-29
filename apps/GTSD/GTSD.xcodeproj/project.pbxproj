@@ -6,8 +6,46 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		1D7CD01B3725D6EA103CAB75 /* GTSDTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBDEBF640880371BB61843D6 /* GTSDTests.swift */; };
+		1E3351A677BBDB8DF25D4439 /* MobileUXIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6D7AA85B762A7AFA93E7BE0 /* MobileUXIntegrationTests.swift */; };
+		25283497CF200A7CB93B08C2 /* PlanIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B00B800EF3BA748EC7D1806 /* PlanIntegrationTests.swift */; };
+		2622F25B4F409D5AD758E664 /* TestMocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A88D57E3BB3F8FFF3919E07 /* TestMocks.swift */; };
+		3539962A835EEA069D51E1E4 /* OnboardingViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB1D314FB10E47E0B15394C3 /* OnboardingViewModelTests.swift */; };
+		3C24158AB21ECF1724EFD69E /* HomeViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3186E1DABD1F8DDC32966290 /* HomeViewModelTests.swift */; };
+		48BCA631A5BE7DEBA5DA71D2 /* PlanServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87231075CE57085A937E551C /* PlanServiceTests.swift */; };
+		713E257A6FF31C8113748C24 /* ProfileEditViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F28407A86F4D5943E156024 /* ProfileEditViewModelTests.swift */; };
+		873A89B68351920AD25441CC /* PlanStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B4EE51461F77391D417DEB9 /* PlanStoreTests.swift */; };
+		99D4EBD87286F3F54922FFB2 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C43C8412ADADC2B4643B2B4 /* Foundation.framework */; };
+		AF4D59AFEF7B1E80617C6AAA /* ProfileZeroStateCardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EB45F37C352EFAD364C2B87 /* ProfileZeroStateCardTests.swift */; };
+		D586C905FD859F988DFC0948 /* PerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79EB9FEB710A40527CF37E7B /* PerformanceTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BC7AA8A425B94226EBD8EE7C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 546006052EAF65B500C729AF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5460060C2EAF65B500C729AF;
+			remoteInfo = GTSD;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		1E12BC48508D3DF2C5CA4F2C /* GTSDTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GTSDTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3186E1DABD1F8DDC32966290 /* HomeViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomeViewModelTests.swift; path = ViewModels/HomeViewModelTests.swift; sourceTree = "<group>"; };
+		3A88D57E3BB3F8FFF3919E07 /* TestMocks.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestMocks.swift; path = Mocks/TestMocks.swift; sourceTree = "<group>"; };
 		5460060D2EAF65B500C729AF /* GTSD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GTSD.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5C43C8412ADADC2B4643B2B4 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		6EB45F37C352EFAD364C2B87 /* ProfileZeroStateCardTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProfileZeroStateCardTests.swift; path = Views/ProfileZeroStateCardTests.swift; sourceTree = "<group>"; };
+		79EB9FEB710A40527CF37E7B /* PerformanceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PerformanceTests.swift; path = Performance/PerformanceTests.swift; sourceTree = "<group>"; };
+		7B00B800EF3BA748EC7D1806 /* PlanIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PlanIntegrationTests.swift; path = Integration/PlanIntegrationTests.swift; sourceTree = "<group>"; };
+		87231075CE57085A937E551C /* PlanServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PlanServiceTests.swift; path = Services/PlanServiceTests.swift; sourceTree = "<group>"; };
+		8F28407A86F4D5943E156024 /* ProfileEditViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProfileEditViewModelTests.swift; path = ViewModels/ProfileEditViewModelTests.swift; sourceTree = "<group>"; };
+		9B4EE51461F77391D417DEB9 /* PlanStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PlanStoreTests.swift; path = Stores/PlanStoreTests.swift; sourceTree = "<group>"; };
+		A6D7AA85B762A7AFA93E7BE0 /* MobileUXIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MobileUXIntegrationTests.swift; path = Integration/MobileUXIntegrationTests.swift; sourceTree = "<group>"; };
+		CBDEBF640880371BB61843D6 /* GTSDTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GTSDTests.swift; sourceTree = "<group>"; };
+		DB1D314FB10E47E0B15394C3 /* OnboardingViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OnboardingViewModelTests.swift; path = ViewModels/OnboardingViewModelTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -39,14 +77,42 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FFCFBC3738208BBCFE882173 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				99D4EBD87286F3F54922FFB2 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		44D1F6A72949350DBF6BC675 /* GTSDTests */ = {
+			isa = PBXGroup;
+			children = (
+				3A88D57E3BB3F8FFF3919E07 /* TestMocks.swift */,
+				8F28407A86F4D5943E156024 /* ProfileEditViewModelTests.swift */,
+				3186E1DABD1F8DDC32966290 /* HomeViewModelTests.swift */,
+				DB1D314FB10E47E0B15394C3 /* OnboardingViewModelTests.swift */,
+				A6D7AA85B762A7AFA93E7BE0 /* MobileUXIntegrationTests.swift */,
+				7B00B800EF3BA748EC7D1806 /* PlanIntegrationTests.swift */,
+				CBDEBF640880371BB61843D6 /* GTSDTests.swift */,
+				9B4EE51461F77391D417DEB9 /* PlanStoreTests.swift */,
+				79EB9FEB710A40527CF37E7B /* PerformanceTests.swift */,
+				6EB45F37C352EFAD364C2B87 /* ProfileZeroStateCardTests.swift */,
+				87231075CE57085A937E551C /* PlanServiceTests.swift */,
+			);
+			path = GTSDTests;
+			sourceTree = "<group>";
+		};
 		546006042EAF65B500C729AF = {
 			isa = PBXGroup;
 			children = (
 				5460060F2EAF65B500C729AF /* GTSD */,
 				5460060E2EAF65B500C729AF /* Products */,
+				C8A3A97C24775EB30966DC40 /* Frameworks */,
+				44D1F6A72949350DBF6BC675 /* GTSDTests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -54,13 +120,48 @@
 			isa = PBXGroup;
 			children = (
 				5460060D2EAF65B500C729AF /* GTSD.app */,
+				1E12BC48508D3DF2C5CA4F2C /* GTSDTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		54A4A422712F6BDD873B2CEF /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				5C43C8412ADADC2B4643B2B4 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		C8A3A97C24775EB30966DC40 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				54A4A422712F6BDD873B2CEF /* iOS */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		38B5635617AF64B79223D50E /* GTSDTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF3233BD0EFC756ABD2F2759 /* Build configuration list for PBXNativeTarget "GTSDTests" */;
+			buildPhases = (
+				51913A3EE84628C30637BE05 /* Sources */,
+				FFCFBC3738208BBCFE882173 /* Frameworks */,
+				9DDF1943A68CFCFDF8DBF58A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				3DD1D2D01CDBAD7C60E20542 /* PBXTargetDependency */,
+			);
+			name = GTSDTests;
+			productName = GTSDTests;
+			productReference = 1E12BC48508D3DF2C5CA4F2C /* GTSDTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		5460060C2EAF65B500C729AF /* GTSD */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 546006182EAF65B600C729AF /* Build configuration list for PBXNativeTarget "GTSD" */;
@@ -77,8 +178,6 @@
 				5460060F2EAF65B500C729AF /* GTSD */,
 			);
 			name = GTSD;
-			packageProductDependencies = (
-			);
 			productName = GTSD;
 			productReference = 5460060D2EAF65B500C729AF /* GTSD.app */;
 			productType = "com.apple.product-type.application";
@@ -113,6 +212,7 @@
 			projectRoot = "";
 			targets = (
 				5460060C2EAF65B500C729AF /* GTSD */,
+				38B5635617AF64B79223D50E /* GTSDTests */,
 			);
 		};
 /* End PBXProject section */
@@ -125,9 +225,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9DDF1943A68CFCFDF8DBF58A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		51913A3EE84628C30637BE05 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2622F25B4F409D5AD758E664 /* TestMocks.swift in Sources */,
+				713E257A6FF31C8113748C24 /* ProfileEditViewModelTests.swift in Sources */,
+				3C24158AB21ECF1724EFD69E /* HomeViewModelTests.swift in Sources */,
+				3539962A835EEA069D51E1E4 /* OnboardingViewModelTests.swift in Sources */,
+				1E3351A677BBDB8DF25D4439 /* MobileUXIntegrationTests.swift in Sources */,
+				25283497CF200A7CB93B08C2 /* PlanIntegrationTests.swift in Sources */,
+				1D7CD01B3725D6EA103CAB75 /* GTSDTests.swift in Sources */,
+				873A89B68351920AD25441CC /* PlanStoreTests.swift in Sources */,
+				D586C905FD859F988DFC0948 /* PerformanceTests.swift in Sources */,
+				AF4D59AFEF7B1E80617C6AAA /* ProfileZeroStateCardTests.swift in Sources */,
+				48BCA631A5BE7DEBA5DA71D2 /* PlanServiceTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		546006092EAF65B500C729AF /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -137,7 +262,38 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		3DD1D2D01CDBAD7C60E20542 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = GTSD;
+			target = 5460060C2EAF65B500C729AF /* GTSD */;
+			targetProxy = BC7AA8A425B94226EBD8EE7C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		4913C8E84D5FB0D6E91DC569 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gtsd.GTSDTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GTSD.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/GTSD";
+			};
+			name = Debug;
+		};
 		546006162EAF65B600C729AF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -327,6 +483,29 @@
 			};
 			name = Release;
 		};
+		BC23CBF3AE8EB6AE68B424E3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gtsd.GTSDTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GTSD.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/GTSD";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -344,6 +523,15 @@
 			buildConfigurations = (
 				546006192EAF65B600C729AF /* Debug */,
 				5460061A2EAF65B600C729AF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FF3233BD0EFC756ABD2F2759 /* Build configuration list for PBXNativeTarget "GTSDTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BC23CBF3AE8EB6AE68B424E3 /* Release */,
+				4913C8E84D5FB0D6E91DC569 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

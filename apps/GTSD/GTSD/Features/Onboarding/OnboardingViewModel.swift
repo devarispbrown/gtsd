@@ -100,15 +100,26 @@ class OnboardingViewModel: ObservableObject {
                 genderValue = gender.rawValue
             }
 
+            // Convert imperial units to metric for API
+            // The app collects weight in pounds and height in inches
+            // The API expects weight in kg and height in cm
+            let currentWeightKg = UnitConversion.poundsToKilograms(currentWeight)
+            let targetWeightKg = UnitConversion.poundsToKilograms(targetWeight)
+            let heightCm = UnitConversion.inchesToCentimeters(height)
+
+            Logger.info("Converting units - Current weight: \(currentWeight) lbs -> \(currentWeightKg) kg")
+            Logger.info("Converting units - Target weight: \(targetWeight) lbs -> \(targetWeightKg) kg")
+            Logger.info("Converting units - Height: \(height) in -> \(heightCm) cm")
+
             let request = CompleteOnboardingRequest(
                 dateOfBirth: isoFormatter.string(from: dateOfBirth),
                 gender: genderValue,
                 primaryGoal: primaryGoal.rawValue,
-                targetWeight: targetWeight,
+                targetWeight: targetWeightKg,
                 targetDate: isoFormatter.string(from: targetDate),
                 activityLevel: activityLevel.rawValue,
-                currentWeight: currentWeight,
-                height: height,
+                currentWeight: currentWeightKg,
+                height: heightCm,
                 dietaryPreferences: onboardingData.dietaryPreferences ?? [],
                 allergies: onboardingData.allergies ?? [],
                 mealsPerDay: onboardingData.mealsPerDay

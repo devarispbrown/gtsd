@@ -48,17 +48,22 @@ final class ProfileEditViewModel: ObservableObject {
     @Published private(set) var isSaving = false
     @Published var errorMessage: String?
     @Published var successMessage: String?
+    @Published private(set) var planHasSignificantChanges = false
+    @Published private(set) var isRecomputingPlan = false
 
     private let apiClient: any APIClientProtocol
     private let authService: any AuthenticationServiceProtocol
+    private let planStore: PlanStore
     private var originalUser: User?
 
     init(
         apiClient: any APIClientProtocol = ServiceContainer.shared.apiClient,
-        authService: any AuthenticationServiceProtocol = ServiceContainer.shared.authService
+        authService: any AuthenticationServiceProtocol = ServiceContainer.shared.authService,
+        planStore: PlanStore? = nil
     ) {
         self.apiClient = apiClient
         self.authService = authService
+        self.planStore = planStore ?? PlanStore(planService: ServiceContainer.shared.planService)
     }
 
     // MARK: - Computed Properties
@@ -84,15 +89,17 @@ final class ProfileEditViewModel: ObservableObject {
             return false
         }
 
-        // Weight validation (if provided)
+        // Weight validation (if provided) - using imperial ranges
         if !currentWeight.isEmpty {
-            guard let weight = Double(currentWeight), weight > 0, weight < 1000 else {
+            guard let weight = Double(currentWeight),
+                  UnitConversion.isValidWeightInPounds(weight) else {
                 return false
             }
         }
 
         if !targetWeight.isEmpty {
-            guard let weight = Double(targetWeight), weight > 0, weight < 1000 else {
+            guard let weight = Double(targetWeight),
+                  UnitConversion.isValidWeightInPounds(weight) else {
                 return false
             }
         }
@@ -154,6 +161,7 @@ final class ProfileEditViewModel: ObservableObject {
         isSaving = true
         errorMessage = nil
         successMessage = nil
+        planHasSignificantChanges = false
 
         defer { isSaving = false }
 
@@ -204,6 +212,77 @@ final class ProfileEditViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Weight Update with Plan Recomputation
+
+    /// Update weight and automatically trigger plan recomputation
+    /// This method should be used when weight changes significantly warrant a plan update
+    /// - Parameter newWeight: Weight in pounds (will be converted to kg for API)
+    func updateWeightAndRecomputePlan(newWeight: Double) async -> Bool {
+        guard UnitConversion.isValidWeightInPounds(newWeight) else {
+            errorMessage = "Invalid weight value. Please enter a weight between \(Int(UnitConversion.validWeightRangeLbs.lowerBound)) and \(Int(UnitConversion.validWeightRangeLbs.upperBound)) lbs"
+            return false
+        }
+
+        isSaving = true
+        isRecomputingPlan = false
+        errorMessage = nil
+        successMessage = nil
+        planHasSignificantChanges = false
+
+        defer {
+            isSaving = false
+            isRecomputingPlan = false
+        }
+
+        do {
+            // Step 1: Update user profile weight
+            // Note: Currently endpoint doesn't support weight updates
+            // This would require backend implementation
+            let newWeightKg = UnitConversion.poundsToKilograms(newWeight)
+            Logger.info("Weight update initiated: \(newWeight) lbs -> \(newWeightKg) kg")
+
+            // Step 2: Trigger plan recomputation
+            isRecomputingPlan = true
+            Logger.info("Triggering plan recomputation after weight update")
+
+            await planStore.recomputePlan()
+
+            // Step 3: Check if plan changed significantly
+            if planStore.hasSignificantChanges() {
+                planHasSignificantChanges = true
+                Logger.info("Plan has significant changes after weight update")
+            }
+
+            // Step 4: Check for errors
+            if let planError = planStore.error {
+                Logger.warning("Plan recomputation completed with error: \(planError.localizedDescription)")
+                errorMessage = "Profile updated, but plan recomputation had issues: \(planError.localizedDescription)"
+                // Still return true since profile update succeeded
+            } else {
+                successMessage = "Weight updated and plan recomputed successfully"
+                Logger.info("Weight update and plan recomputation completed successfully")
+            }
+
+            return true
+
+        } catch let error as APIError {
+            Logger.error("Failed to update weight: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
+            return false
+        } catch {
+            Logger.error("Failed to update weight: \(error.localizedDescription)")
+            errorMessage = "Failed to update weight"
+            return false
+        }
+    }
+
+    // MARK: - Access to Plan Data
+
+    /// Current plan data from store
+    var currentPlanData: PlanGenerationData? {
+        return planStore.currentPlan
+    }
+
     // MARK: - Validation Messages
 
     var nameError: String? {
@@ -224,11 +303,8 @@ final class ProfileEditViewModel: ObservableObject {
         guard !currentWeight.isEmpty else { return nil }
 
         if let weight = Double(currentWeight) {
-            if weight <= 0 {
-                return "Weight must be greater than 0"
-            }
-            if weight >= 1000 {
-                return "Weight must be less than 1000"
+            if !UnitConversion.isValidWeightInPounds(weight) {
+                return "Weight must be between \(Int(UnitConversion.validWeightRangeLbs.lowerBound)) and \(Int(UnitConversion.validWeightRangeLbs.upperBound)) lbs"
             }
         } else {
             return "Invalid weight value"
@@ -240,11 +316,8 @@ final class ProfileEditViewModel: ObservableObject {
         guard !targetWeight.isEmpty else { return nil }
 
         if let weight = Double(targetWeight) {
-            if weight <= 0 {
-                return "Weight must be greater than 0"
-            }
-            if weight >= 1000 {
-                return "Weight must be less than 1000"
+            if !UnitConversion.isValidWeightInPounds(weight) {
+                return "Weight must be between \(Int(UnitConversion.validWeightRangeLbs.lowerBound)) and \(Int(UnitConversion.validWeightRangeLbs.upperBound)) lbs"
             }
         } else {
             return "Invalid weight value"

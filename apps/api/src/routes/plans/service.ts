@@ -89,7 +89,9 @@ export class PlansService {
         const [recentPlan] = await db
           .select()
           .from(plans)
-          .where(sql`${plans.userId} = ${userId} AND ${plans.startDate} >= ${sevenDaysAgo}`)
+          .where(
+            sql`${plans.userId} = ${userId} AND ${plans.startDate} >= ${sevenDaysAgo.toISOString()}`
+          )
           .orderBy(desc(plans.createdAt))
           .limit(1);
 

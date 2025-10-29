@@ -11,6 +11,7 @@ import PhotosUI
 struct ProfileEditView: View {
     @StateObject private var viewModel = ProfileEditViewModel()
     @Environment(\.dismiss) private var dismiss
+    @State private var showPlanChanges = false
 
     var body: some View {
         NavigationStack {
@@ -28,6 +29,8 @@ struct ProfileEditView: View {
                     Button("Cancel") {
                         dismiss()
                     }
+                    .accessibilityLabel("Cancel editing")
+                    .accessibilityHint("Double tap to discard changes and return")
                 }
 
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -35,11 +38,18 @@ struct ProfileEditView: View {
                         _Concurrency.Task {
                             let success = await viewModel.saveChanges()
                             if success {
-                                dismiss()
+                                // Check if plan has significant changes
+                                if viewModel.planHasSignificantChanges {
+                                    showPlanChanges = true
+                                } else {
+                                    dismiss()
+                                }
                             }
                         }
                     }
                     .disabled(!viewModel.isValid || viewModel.isSaving)
+                    .accessibilityLabel("Save profile changes")
+                    .accessibilityHint(viewModel.isValid ? "Double tap to save your profile updates" : "Button disabled. Complete all required fields to save")
                 }
             }
             .task {
@@ -51,6 +61,13 @@ struct ProfileEditView: View {
                 }
             } message: {
                 Text(viewModel.errorMessage ?? "")
+            }
+            .sheet(isPresented: $showPlanChanges) {
+                PlanChangeSummaryView(planData: viewModel.currentPlanData)
+                    .onDisappear {
+                        // Dismiss profile edit view after showing plan changes
+                        dismiss()
+                    }
             }
         }
     }
@@ -95,6 +112,9 @@ struct ProfileEditView: View {
                             await viewModel.loadSelectedPhoto()
                         }
                     }
+                    .accessibilityLabel("Change profile photo")
+                    .accessibilityHint("Double tap to select a new profile photo from your library")
+                    .minimumTouchTarget()
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Spacing.md)
@@ -106,11 +126,14 @@ struct ProfileEditView: View {
                     TextField("Full Name", text: $viewModel.name)
                         .textContentType(.name)
                         .autocapitalization(.words)
+                        .accessibilityLabel("Full name")
+                        .accessibilityHint("Enter your full name")
 
                     if let error = viewModel.nameError, !viewModel.name.isEmpty {
                         Text(error)
                             .font(.labelSmall)
                             .foregroundColor(.errorColor)
+                            .accessibilityLabel("Name validation error: \(error)")
                     }
                 }
 
@@ -119,11 +142,14 @@ struct ProfileEditView: View {
                         .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)
                         .autocapitalization(.none)
+                        .accessibilityLabel("Email address")
+                        .accessibilityHint("Enter your email address")
 
                     if let error = viewModel.emailError, !viewModel.email.isEmpty {
                         Text(error)
                             .font(.labelSmall)
                             .foregroundColor(.errorColor)
+                            .accessibilityLabel("Email validation error: \(error)")
                     }
                 }
             }
@@ -173,31 +199,32 @@ struct ProfileEditView: View {
 
             // Dietary Preferences Section
             Section("Dietary Preferences") {
-                TextField("Dietary Preferences", text: $viewModel.dietaryPreferences)
-                    .placeholder(when: viewModel.dietaryPreferences.isEmpty) {
-                        Text("e.g., Vegetarian, Vegan, etc.")
-                            .foregroundColor(.textTertiary)
-                    }
+                TextField("None", text: $viewModel.dietaryPreferences)
+                    .accessibilityLabel("Dietary preferences")
+                    .accessibilityHint("Enter any dietary preferences or restrictions")
 
                 HStack {
                     TextField("Meals per Day", text: $viewModel.mealsPerDay)
                         .keyboardType(.numberPad)
+                        .accessibilityLabel("Number of meals per day")
+                        .accessibilityHint("Enter the number of meals you prefer each day")
 
                     Text("meals")
                         .foregroundColor(.textSecondary)
                 }
+            }
 
-                TextField("Allergies", text: $viewModel.allergies)
-                    .placeholder(when: viewModel.allergies.isEmpty) {
-                        Text("e.g., Nuts, Dairy, etc.")
-                            .foregroundColor(.textTertiary)
-                    }
+            // Allergies Section
+            Section("Allergies") {
+                TextField("None", text: $viewModel.allergies)
+                    .accessibilityLabel("Food allergies")
+                    .accessibilityHint("Enter any food allergies or sensitivities")
             }
 
             // Save Button Section
             Section {
                 GTSDButton(
-                    "Save Changes",
+                    viewModel.isRecomputingPlan ? "Updating Plan..." : "Save Changes",
                     style: .primary,
                     isLoading: viewModel.isSaving,
                     isDisabled: !viewModel.isValid || !viewModel.hasChanges
@@ -205,7 +232,12 @@ struct ProfileEditView: View {
                     _Concurrency.Task {
                         let success = await viewModel.saveChanges()
                         if success {
-                            dismiss()
+                            // Check if plan has significant changes
+                            if viewModel.planHasSignificantChanges {
+                                showPlanChanges = true
+                            } else {
+                                dismiss()
+                            }
                         }
                     }
                 }

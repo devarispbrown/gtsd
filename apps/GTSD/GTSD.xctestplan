@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "4C7A055A-0AC2-4731-8F99-286EDCE08FD1",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:GTSD.xcodeproj",
+        "identifier" : "54FFCB272EB17B9700AC443D",
+        "name" : "GTSDTests"
+      }
+    }
+  ],
+  "version" : 1
+}
