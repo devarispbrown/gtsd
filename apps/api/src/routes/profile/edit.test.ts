@@ -7,7 +7,7 @@ import { eq } from 'drizzle-orm';
 import { sign } from 'jsonwebtoken';
 import { Application } from 'express';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'test-secret-key-at-least-32-characters-long-for-testing';
 
 let app: Application;
 let testUserId: number;
@@ -60,7 +60,15 @@ describe('Profile Edit API', () => {
     });
 
     // Generate auth token
-    authToken = sign({ userId: testUserId, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
+    authToken = sign(
+      { userId: testUserId, email: user.email },
+      JWT_SECRET,
+      {
+        expiresIn: '1h',
+        issuer: 'gtsd-api',
+        audience: 'gtsd-client',
+      }
+    );
   });
 
   afterAll(async () => {
