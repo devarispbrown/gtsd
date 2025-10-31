@@ -8,25 +8,29 @@
 import SwiftUI
 
 struct PlanSummaryView: View {
-    @StateObject private var planStore: PlanStore
     @StateObject private var viewModel: PlanSummaryViewModel
+    @ObservedObject private var metricsViewModel = MetricsViewModel.shared
     @State private var expandedSections: Set<String> = []
     @State private var showChangeAlert = false
+    @State private var showErrorAlert = false
 
-    init(planStore: PlanStore? = nil) {
-        let store = planStore ?? PlanStore(planService: ServiceContainer.shared.planService)
-        _planStore = StateObject(wrappedValue: store)
-        _viewModel = StateObject(wrappedValue: PlanSummaryViewModel(planStore: store))
+    init(apiClient: (any APIClientProtocol)? = nil) {
+        let client = apiClient ?? ServiceContainer.shared.apiClient
+        _viewModel = StateObject(wrappedValue: PlanSummaryViewModel(apiClient: client))
     }
 
     var body: some View {
         NavigationStack {
             ZStack {
-                if viewModel.isLoading && viewModel.planData == nil {
+                // Check if metrics need acknowledgment first - HIGHEST PRIORITY
+                if metricsViewModel.needsAcknowledgment {
+                    metricsAcknowledgmentView
+                } else if viewModel.isLoading && viewModel.planData == nil {
                     ProgressView("Loading your plan...")
                         .progressViewStyle(.circular)
-                } else if let planError = viewModel.planError, viewModel.planData == nil {
-                    ErrorView(message: planError.localizedDescription ?? "An error occurred", retryAction: {
+                } else if let planError = viewModel.planError, viewModel.planData == nil, !shouldShowAcknowledgmentForError(planError) {
+                    // Only show error if it's not a metrics acknowledgment error
+                    ErrorView(message: planError.localizedDescription, retryAction: {
                         _Concurrency.Task {
                             await viewModel.fetchPlanSummary()
                         }
@@ -101,25 +105,177 @@ struct PlanSummaryView: View {
                     Text(timelineChange)
                 }
             }
-            .alert("Error", isPresented: .constant(viewModel.planError != nil && viewModel.planData != nil)) {
+            .onChange(of: viewModel.planError) { _, newValue in
+                showErrorAlert = (newValue != nil && viewModel.planData != nil)
+            }
+            .alert("Error", isPresented: $showErrorAlert) {
                 Button("OK") {
                     viewModel.clearErrors()
+                    showErrorAlert = false
                 }
                 if viewModel.planError?.isRetryable == true {
                     Button("Retry") {
                         _Concurrency.Task {
                             await viewModel.refreshPlan()
                         }
+                        showErrorAlert = false
                     }
                 }
             } message: {
                 if let error = viewModel.planError {
-                    Text(error.localizedDescription ?? "An error occurred")
+                    Text(error.localizedDescription)
                 }
             }
             .task {
-                if viewModel.planData == nil {
+                // CRITICAL: Check if metrics need acknowledgment FIRST
+                // This must complete before attempting to fetch the plan
+                await metricsViewModel.checkMetricsAcknowledgment()
+
+                // Wait for metrics check to complete and update state
+                // Only fetch plan if:
+                // 1. We don't have plan data yet
+                // 2. Metrics are acknowledged (needsAcknowledgment is false)
+                if viewModel.planData == nil && !metricsViewModel.needsAcknowledgment {
                     await viewModel.fetchPlanSummary()
+                }
+            }
+            .onChange(of: viewModel.planError) { oldError, newError in
+                // If we get a metrics acknowledgment error, trigger metrics check
+                if let error = newError, shouldShowAcknowledgmentForError(error) {
+                    _Concurrency.Task {
+                        // Clear the error and show acknowledgment UI instead
+                        viewModel.clearErrors()
+                        await metricsViewModel.checkMetricsAcknowledgment()
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Metrics Acknowledgment View
+
+    private var metricsAcknowledgmentView: some View {
+        ScrollView {
+            VStack(spacing: Spacing.xl) {
+                // Header
+                VStack(spacing: Spacing.sm) {
+                    Image(systemName: "heart.text.square.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.primaryColor)
+                        .padding(.top, Spacing.xl)
+
+                    Text("Review Your Health Metrics")
+                        .font(.headlineLarge)
+                        .foregroundColor(.textPrimary)
+                        .multilineTextAlignment(.center)
+
+                    Text("Before we generate your personalized plan, please review your health metrics")
+                        .font(.bodyMedium)
+                        .foregroundColor(.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, Spacing.xl)
+                }
+
+                if metricsViewModel.isLoadingMetrics {
+                    VStack(spacing: Spacing.md) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Loading metrics...")
+                            .font(.bodyMedium)
+                            .foregroundColor(.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xxl)
+                } else if let summary = metricsViewModel.metricsSummary {
+                    VStack(spacing: Spacing.lg) {
+                        // BMI Card
+                        MetricCardSimple(
+                            icon: "scalemass.fill",
+                            title: "BMI (Body Mass Index)",
+                            value: String(format: "%.1f", summary.metrics.bmi),
+                            explanation: summary.explanations.bmi,
+                            color: .infoColor
+                        )
+
+                        // BMR Card
+                        MetricCardSimple(
+                            icon: "flame.fill",
+                            title: "BMR (Basal Metabolic Rate)",
+                            value: "\(summary.metrics.bmr) cal/day",
+                            explanation: summary.explanations.bmr,
+                            color: .warningColor
+                        )
+
+                        // TDEE Card
+                        MetricCardSimple(
+                            icon: "bolt.heart.fill",
+                            title: "TDEE (Total Daily Energy)",
+                            value: "\(summary.metrics.tdee) cal/day",
+                            explanation: summary.explanations.tdee,
+                            color: .successColor
+                        )
+                    }
+                    .padding(.horizontal, Spacing.xl)
+
+                    // Acknowledge Button
+                    VStack(spacing: Spacing.md) {
+                        Text("These metrics form the foundation of your personalized nutrition plan")
+                            .font(.bodySmall)
+                            .foregroundColor(.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, Spacing.xl)
+
+                        GTSDButton(
+                            "I Understand, Generate My Plan",
+                            style: .primary,
+                            isLoading: metricsViewModel.isAcknowledgingMetrics
+                        ) {
+                            _Concurrency.Task {
+                                await metricsViewModel.acknowledgeMetrics()
+                                // After acknowledgment, fetch the plan
+                                if !metricsViewModel.needsAcknowledgment {
+                                    await viewModel.fetchPlanSummary()
+                                }
+                            }
+                        }
+                        .padding(.horizontal, Spacing.xl)
+                    }
+                    .padding(.vertical, Spacing.lg)
+                } else if let errorMessage = metricsViewModel.metricsError {
+                    VStack(spacing: Spacing.md) {
+                        // Check if this is a "metrics being calculated" message vs actual error
+                        let isCalculating = errorMessage.contains("being calculated")
+
+                        Image(systemName: isCalculating ? "clock.fill" : "exclamationmark.triangle.fill")
+                            .font(.system(size: 48))
+                            .foregroundColor(isCalculating ? .orange : .red)
+
+                        Text(isCalculating ? "Metrics Being Calculated" : "Unable to Load Metrics")
+                            .font(.titleMedium)
+                            .foregroundColor(.textPrimary)
+
+                        Text(errorMessage)
+                            .font(.bodyMedium)
+                            .foregroundColor(.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, Spacing.xl)
+
+                        if isCalculating {
+                            Text("This usually takes just a few seconds. The app will automatically refresh when your metrics are ready.")
+                                .font(.bodySmall)
+                                .foregroundColor(.textTertiary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, Spacing.xl)
+                        }
+
+                        GTSDButton("Try Again", style: .primary) {
+                            _Concurrency.Task {
+                                await metricsViewModel.fetchHealthMetrics()
+                            }
+                        }
+                        .padding(.horizontal, Spacing.xl)
+                    }
+                    .padding(.vertical, Spacing.xl)
                 }
             }
         }
@@ -622,6 +778,21 @@ struct PlanSummaryView: View {
     }
 
     // MARK: - Helper Methods
+
+    /// Check if an error is a metrics acknowledgment error that should trigger the acknowledgment UI
+    /// instead of showing an error view
+    private func shouldShowAcknowledgmentForError(_ error: PlanError) -> Bool {
+        // Check for 400 errors with metrics acknowledgment messages
+        if case .serverError(let code, let message) = error {
+            if code == 400 {
+                let lowerMessage = message.lowercased()
+                // Check for common metrics acknowledgment error messages
+                return lowerMessage.contains("acknowledge") &&
+                       (lowerMessage.contains("metrics") || lowerMessage.contains("health"))
+            }
+        }
+        return false
+    }
 
     private func toggleSection(_ section: String) {
         if expandedSections.contains(section) {

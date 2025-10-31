@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
+    @EnvironmentObject private var authService: AuthenticationService
     @State private var showingSettings = false
     @State private var showingEditProfile = false
     @State private var showingLogoutAlert = false
@@ -37,6 +38,70 @@ struct ProfileView: View {
                                     totalBadges: 0
                                 )
                                 .padding(.horizontal, Spacing.md)
+                            }
+
+                            // Dietary Preferences and Allergies Display
+                            if (user.dietaryPreferences?.isEmpty == false) ||
+                               (user.allergies?.isEmpty == false) ||
+                               (user.mealsPerDay != nil) {
+                                VStack(alignment: .leading, spacing: Spacing.md) {
+                                    Text("Dietary Information")
+                                        .font(.titleMedium)
+                                        .foregroundColor(.textPrimary)
+                                        .padding(.horizontal, Spacing.md)
+
+                                    GTSDCard {
+                                        VStack(alignment: .leading, spacing: Spacing.md) {
+                                            // Dietary Preferences
+                                            if let prefs = user.dietaryPreferences, !prefs.isEmpty {
+                                                VStack(alignment: .leading, spacing: Spacing.sm) {
+                                                    Text("Dietary Preferences")
+                                                        .font(.labelMedium)
+                                                        .foregroundColor(.textSecondary)
+
+                                                    ScrollView(.horizontal, showsIndicators: false) {
+                                                        HStack(spacing: Spacing.sm) {
+                                                            ForEach(prefs, id: \.self) { pref in
+                                                                TagView(text: pref, style: .primary)
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            // Allergies
+                                            if let allergies = user.allergies, !allergies.isEmpty {
+                                                VStack(alignment: .leading, spacing: Spacing.sm) {
+                                                    Text("Allergies & Sensitivities")
+                                                        .font(.labelMedium)
+                                                        .foregroundColor(.textSecondary)
+
+                                                    ScrollView(.horizontal, showsIndicators: false) {
+                                                        HStack(spacing: Spacing.sm) {
+                                                            ForEach(allergies, id: \.self) { allergy in
+                                                                TagView(text: allergy, style: .warning)
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            // Meals Per Day
+                                            if let meals = user.mealsPerDay {
+                                                HStack {
+                                                    Text("Meals per day:")
+                                                        .font(.labelMedium)
+                                                        .foregroundColor(.textSecondary)
+                                                    Text("\(meals)")
+                                                        .font(.bodyMedium)
+                                                        .foregroundColor(.textPrimary)
+                                                        .fontWeight(.medium)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    .padding(.horizontal, Spacing.md)
+                                }
                             }
 
                             // Action Buttons
@@ -102,6 +167,13 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showingEditProfile) {
                 ProfileEditView()
+                    .onDisappear {
+                        // Refresh profile when edit sheet is dismissed
+                        // This ensures UI shows the latest saved changes
+                        _Concurrency.Task {
+                            await viewModel.loadProfile()
+                        }
+                    }
             }
             .sheet(isPresented: $showingSettings) {
                 SettingsView()

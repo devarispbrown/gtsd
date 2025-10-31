@@ -1,0 +1,95 @@
+/*
+   Localizable.strings
+   GTSD
+
+   Localization strings for the GTSD iOS app
+   Created by Claude on 2025-10-28.
+*/
+
+// MARK: - Metrics Summary
+
+"metrics_summary.title" = "Your Health Metrics";
+"metrics_summary.subtitle" = "Review Your Metrics";
+"metrics_summary.description" = "These metrics are calculated based on your profile. Please review them before continuing.";
+
+// MARK: - BMI
+
+"metrics.bmi.title" = "Body Mass Index (BMI)";
+"metrics.bmi.short_title" = "BMI";
+"metrics.bmi.unit" = "";
+"metrics.bmi.learn_more" = "What is BMI?";
+"metrics.bmi.explanation" = "BMI is a measure of body fat based on height and weight. A normal BMI is between 18.5 and 24.9.";
+"metrics.bmi.category.underweight" = "Underweight";
+"metrics.bmi.category.normal" = "Normal";
+"metrics.bmi.category.overweight" = "Overweight";
+"metrics.bmi.category.obese" = "Obese";
+
+// MARK: - BMR
+
+"metrics.bmr.title" = "Basal Metabolic Rate (BMR)";
+"metrics.bmr.short_title" = "BMR";
+"metrics.bmr.unit" = "cal/day";
+"metrics.bmr.learn_more" = "Understanding BMR";
+"metrics.bmr.explanation" = "Your BMR represents the minimum calories your body needs to maintain vital functions like breathing, circulation, and cell production while at rest.";
+"metrics.bmr.detail" = "This is calculated using the Mifflin-St Jeor equation based on your age, gender, height, and weight.";
+
+// MARK: - TDEE
+
+"metrics.tdee.title" = "Total Daily Energy Expenditure (TDEE)";
+"metrics.tdee.short_title" = "TDEE";
+"metrics.tdee.unit" = "cal/day";
+"metrics.tdee.learn_more" = "What is TDEE?";
+"metrics.tdee.explanation" = "TDEE is your total calorie burn per day, including your BMR plus calories burned through physical activity.";
+"metrics.tdee.detail" = "This number is used to create your personalized calorie targets based on your goals.";
+
+// MARK: - Targets
+
+"metrics.targets.title" = "Your Daily Targets";
+"metrics.targets.calories" = "Calories";
+"metrics.targets.protein" = "Protein";
+"metrics.targets.water" = "Water";
+
+// MARK: - Actions
+
+"metrics_summary.cta.acknowledge" = "Acknowledge & Continue";
+"metrics_summary.cta.learn_more" = "Learn More";
+"metrics_summary.cta.show_less" = "Show Less";
+"metrics_summary.cta.retry" = "Try Again";
+"metrics_summary.cta.close" = "Close";
+
+// MARK: - Info
+
+"metrics_summary.info.title" = "Why These Metrics Matter";
+"metrics_summary.info.description" = "These metrics form the foundation of your personalized plan. They're calculated using scientifically-validated formulas and your unique profile data.";
+
+// MARK: - Status
+
+"metrics_summary.status.acknowledged" = "Metrics Acknowledged";
+"metrics_summary.status.loading" = "Loading your metrics...";
+
+// MARK: - Empty States
+
+"metrics_summary.empty.title" = "No Metrics Available";
+"metrics_summary.empty.message" = "Complete your profile to see your personalized health metrics";
+"metrics_summary.empty.action" = "Complete Profile";
+
+// MARK: - Error States
+
+"metrics_summary.error.title" = "Unable to Load Metrics";
+"metrics_summary.error.not_found" = "No metrics available yet. Please complete your profile first.";
+"metrics_summary.error.network" = "Network connection error. Please check your internet connection.";
+"metrics_summary.error.invalid_response" = "Unable to process server response. Please try again.";
+"metrics_summary.error.server" = "Server error occurred. Please try again later.";
+"metrics_summary.error.already_acknowledged" = "Metrics have already been acknowledged.";
+"metrics_summary.error.generic" = "An unexpected error occurred. Please try again.";
+
+// MARK: - Accessibility
+
+"metrics_summary.accessibility.close_hint" = "Dismiss metrics summary";
+"metrics_summary.accessibility.close_disabled_hint" = "Complete acknowledgement before closing";
+"metrics_summary.accessibility.metric_expanded" = "Hide detailed explanation";
+"metrics_summary.accessibility.metric_collapsed" = "Show detailed explanation";
+"metrics_summary.accessibility.toggle_hint" = "Double tap to toggle additional information";
+"metrics_summary.accessibility.acknowledge_hint" = "Double tap to confirm you've reviewed your health metrics";
+"metrics_summary.accessibility.loading" = "Loading your health metrics";
+"metrics_summary.accessibility.acknowledged" = "Metrics have been acknowledged";
