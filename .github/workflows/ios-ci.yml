@@ -4,12 +4,12 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - 'apps/ios/**'
+      - 'apps/GTSD/**'
       - '.github/workflows/ios-ci.yml'
   pull_request:
     branches: [main, develop]
     paths:
-      - 'apps/ios/**'
+      - 'apps/GTSD/**'
       - '.github/workflows/ios-ci.yml'
 
 env:
@@ -32,12 +32,12 @@ jobs:
 
       - name: Run SwiftLint
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           swiftlint lint --reporter github-actions-logging --strict
 
       - name: SwiftLint Autocorrect Check
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           swiftlint --fix --format
           git diff --exit-code || (echo "SwiftLint found fixable issues. Run 'swiftlint --fix' locally." && exit 1)
 
@@ -75,12 +75,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           xcodebuild -resolvePackageDependencies -workspace GTSD.xcworkspace -scheme GTSD
 
       - name: Run Unit Tests
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           xcodebuild test \
             -workspace GTSD.xcworkspace \
             -scheme GTSD \
@@ -97,7 +97,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-results-${{ strategy.job-index }}
-          path: apps/ios/GTSD/TestResults/UnitTests-${{ strategy.job-index }}.xcresult
+          path: apps/GTSD/TestResults/UnitTests-${{ strategy.job-index }}.xcresult
           retention-days: 30
 
   # Job 3: Integration Tests
@@ -124,12 +124,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           xcodebuild -resolvePackageDependencies -workspace GTSD.xcworkspace -scheme GTSD
 
       - name: Run Integration Tests
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           xcodebuild test \
             -workspace GTSD.xcworkspace \
             -scheme GTSD \
@@ -145,7 +145,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: integration-test-results
-          path: apps/ios/GTSD/TestResults/IntegrationTests.xcresult
+          path: apps/GTSD/TestResults/IntegrationTests.xcresult
           retention-days: 30
 
   # Job 4: UI Tests
@@ -172,12 +172,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           xcodebuild -resolvePackageDependencies -workspace GTSD.xcworkspace -scheme GTSD
 
       - name: Run UI Tests
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           xcodebuild test \
             -workspace GTSD.xcworkspace \
             -scheme GTSD \
@@ -193,7 +193,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ui-test-results
-          path: apps/ios/GTSD/TestResults/UITests.xcresult
+          path: apps/GTSD/TestResults/UITests.xcresult
           retention-days: 30
 
       - name: Upload UI Test Screenshots
@@ -225,7 +225,7 @@ jobs:
 
       - name: Generate coverage reports
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           # Generate human-readable coverage report
           xcov \
             --workspace GTSD.xcworkspace \
@@ -239,13 +239,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-reports
-          path: apps/ios/GTSD/coverage
+          path: apps/GTSD/coverage
           retention-days: 30
 
       - name: Convert coverage to Cobertura format
         continue-on-error: true
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           # Try to convert to Cobertura format for Codecov
           if command -v swiftcov &> /dev/null; then
             find TestResults -name "*.xcresult" -print0 | xargs -0 -I {} \
@@ -257,7 +257,7 @@ jobs:
         continue-on-error: true
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: apps/ios/GTSD/coverage/cobertura.xml
+          files: apps/GTSD/coverage/cobertura.xml
           flags: ios
           name: ios-coverage
           fail_ci_if_error: false
@@ -269,7 +269,7 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const coveragePath = 'apps/ios/GTSD/coverage/coverage.md';
+            const coveragePath = 'apps/GTSD/coverage/coverage.md';
 
             if (fs.existsSync(coveragePath)) {
               const coverage = fs.readFileSync(coveragePath, 'utf8');
@@ -306,7 +306,7 @@ jobs:
 
       - name: Build for Testing
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           xcodebuild build-for-testing \
             -workspace GTSD.xcworkspace \
             -scheme GTSD \
@@ -317,12 +317,12 @@ jobs:
 
       - name: Check build artifacts
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           ls -lh DerivedData/Build/Products/Debug-iphonesimulator/
 
       - name: Check app size
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           APP_PATH="DerivedData/Build/Products/Debug-iphonesimulator/GTSD.app"
           if [ -d "$APP_PATH" ]; then
             SIZE_KB=$(du -sk "$APP_PATH" | cut -f1)
@@ -357,7 +357,7 @@ jobs:
 
       - name: Run static analysis
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           xcodebuild analyze \
             -workspace GTSD.xcworkspace \
             -scheme GTSD \
@@ -389,7 +389,7 @@ jobs:
 
       - name: Run performance tests
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           xcodebuild test \
             -workspace GTSD.xcworkspace \
             -scheme GTSD \
@@ -402,7 +402,7 @@ jobs:
       - name: Extract performance metrics
         continue-on-error: true
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           if [ -d "TestResults/PerformanceTests.xcresult" ]; then
             xcrun xcresulttool get \
               --path TestResults/PerformanceTests.xcresult \
@@ -415,7 +415,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: performance-results
-          path: apps/ios/GTSD/performance-results.json
+          path: apps/GTSD/performance-results.json
           retention-days: 30
 
   # Job 9: TestFlight Deployment (main branch only)
@@ -436,7 +436,7 @@ jobs:
       - name: Install Fastlane
         run: |
           brew install fastlane
-          cd apps/ios/GTSD/fastlane
+          cd apps/GTSD/fastlane
           bundle install || gem install fastlane
 
       - name: Cache SPM packages
@@ -485,7 +485,7 @@ jobs:
           APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
         run: |
-          cd apps/ios/GTSD
+          cd apps/GTSD
           fastlane beta
 
       - name: Cleanup keychain
