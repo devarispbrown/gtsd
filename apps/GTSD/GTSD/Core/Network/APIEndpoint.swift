@@ -29,6 +29,12 @@ enum APIEndpoint: Sendable {
     case deleteAccount
     case completeOnboarding(CompleteOnboardingRequest)
 
+    // MARK: - Profile Management
+    case getProfile
+    case updateProfileHealth(ProfileHealthUpdateRequest)
+    case updateProfileGoals(ProfileGoalsUpdateRequest)
+    case updateProfilePreferences(ProfilePreferencesUpdateRequest)
+
     // MARK: - Tasks
     case getTasks(page: Int?, limit: Int?, status: String?, category: String?)
     case createTask(title: String, description: String?, category: String, dueDate: Date?, priority: String?)
@@ -71,6 +77,12 @@ enum APIEndpoint: Sendable {
         case .deleteAccount: return "/auth/delete-account"
         case .completeOnboarding: return "/v1/onboarding"
 
+        // Profile Management
+        case .getProfile: return "/v1/auth/profile"
+        case .updateProfileHealth: return "/v1/auth/profile/health"
+        case .updateProfileGoals: return "/v1/auth/profile/goals"
+        case .updateProfilePreferences: return "/v1/auth/profile/preferences"
+
         // Tasks
         case .getTasks: return "/v1/tasks/today"
         case .createTask: return "/v1/tasks/today"
@@ -106,7 +118,7 @@ enum APIEndpoint: Sendable {
         switch self {
         case .signup, .login, .createTask, .uploadPhoto, .completeTask, .uncompleteTask, .completeOnboarding, .generatePlan:
             return .post
-        case .updateProfile, .updateTask:
+        case .updateProfile, .updateTask, .updateProfileHealth, .updateProfileGoals, .updateProfilePreferences:
             return .put
         case .changePassword:
             return .patch
@@ -191,6 +203,15 @@ enum APIEndpoint: Sendable {
             return try JSONEncoder().encode([
                 "forceRecompute": forceRecompute
             ])
+
+        case .updateProfileHealth(let request):
+            return try JSONEncoder().encode(request)
+
+        case .updateProfileGoals(let request):
+            return try JSONEncoder().encode(request)
+
+        case .updateProfilePreferences(let request):
+            return try JSONEncoder().encode(request)
 
         default:
             return nil

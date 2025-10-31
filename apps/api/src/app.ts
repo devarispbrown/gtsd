@@ -6,11 +6,7 @@ import { metricsMiddleware } from './middleware/metrics';
 import { authMiddleware } from './middleware/auth';
 import { errorHandler, notFoundHandler } from './middleware/error';
 import { apiLimiter } from './middleware/rateLimiter';
-import {
-  helmetMiddleware,
-  corsMiddleware,
-  additionalSecurityHeaders,
-} from './middleware/security';
+import { helmetMiddleware, corsMiddleware, additionalSecurityHeaders } from './middleware/security';
 import healthRouter from './routes/health';
 import metricsRouter from './routes/metrics';
 import authRouter from './routes/auth';
@@ -21,6 +17,7 @@ import progressRouter from './routes/progress/photos';
 import streaksRouter from './routes/streaks';
 import plansRouter from './routes/plans';
 import profileMetricsRouter from './routes/profile/metrics';
+import profileEditRouter from './routes/profile/edit';
 
 export const createApp = (): Application => {
   const app = express();
@@ -36,16 +33,18 @@ export const createApp = (): Application => {
   app.use(cookieParser());
 
   // JSON parsing error handler
-  app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction): void => {
-    if (err instanceof SyntaxError && 'body' in err) {
-      res.status(400).json({
-        success: false,
-        error: 'Invalid JSON in request body',
-      });
-      return;
+  app.use(
+    (err: any, _req: express.Request, res: express.Response, next: express.NextFunction): void => {
+      if (err instanceof SyntaxError && 'body' in err) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid JSON in request body',
+        });
+        return;
+      }
+      next(err);
     }
-    next(err);
-  });
+  );
 
   // Request context (must be first to ensure requestId is available)
   app.use(requestContextMiddleware);
@@ -77,6 +76,7 @@ export const createApp = (): Application => {
   app.use('/v1', plansRouter);
   app.use('/v1/progress', progressRouter);
   app.use('/v1/profile', profileMetricsRouter);
+  app.use('/v1', profileEditRouter);
 
   // Error handlers (must be last)
   app.use(notFoundHandler);

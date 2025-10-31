@@ -18,6 +18,11 @@ struct User: Codable, Identifiable, Sendable {
     let createdAt: Date?
     let updatedAt: Date?
 
+    // Dietary preferences
+    let dietaryPreferences: [String]?
+    let allergies: [String]?
+    let mealsPerDay: Int?
+
     enum CodingKeys: String, CodingKey {
         case id
         case email
@@ -26,10 +31,13 @@ struct User: Codable, Identifiable, Sendable {
         case hasCompletedOnboarding
         case createdAt
         case updatedAt
+        case dietaryPreferences
+        case allergies
+        case mealsPerDay
     }
 
     /// Initialize from integer ID (for auth responses)
-    init(id: Int, email: String, name: String, emailVerified: Bool, hasCompletedOnboarding: Bool = false, createdAt: Date? = nil, updatedAt: Date? = nil) {
+    init(id: Int, email: String, name: String, emailVerified: Bool, hasCompletedOnboarding: Bool = false, createdAt: Date? = nil, updatedAt: Date? = nil, dietaryPreferences: [String]? = nil, allergies: [String]? = nil, mealsPerDay: Int? = nil) {
         self.id = String(id)
         self.email = email
         self.name = name
@@ -37,10 +45,13 @@ struct User: Codable, Identifiable, Sendable {
         self.hasCompletedOnboarding = hasCompletedOnboarding
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.dietaryPreferences = dietaryPreferences
+        self.allergies = allergies
+        self.mealsPerDay = mealsPerDay
     }
 
     /// Initialize from string ID (for other endpoints)
-    init(id: String, email: String, name: String, emailVerified: Bool, hasCompletedOnboarding: Bool = false, createdAt: Date? = nil, updatedAt: Date? = nil) {
+    init(id: String, email: String, name: String, emailVerified: Bool, hasCompletedOnboarding: Bool = false, createdAt: Date? = nil, updatedAt: Date? = nil, dietaryPreferences: [String]? = nil, allergies: [String]? = nil, mealsPerDay: Int? = nil) {
         self.id = id
         self.email = email
         self.name = name
@@ -48,6 +59,9 @@ struct User: Codable, Identifiable, Sendable {
         self.hasCompletedOnboarding = hasCompletedOnboarding
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.dietaryPreferences = dietaryPreferences
+        self.allergies = allergies
+        self.mealsPerDay = mealsPerDay
     }
 }
 
@@ -122,6 +136,9 @@ extension User {
         self.hasCompletedOnboarding = (try? container.decode(Bool.self, forKey: .hasCompletedOnboarding)) ?? false
         self.createdAt = try? container.decodeIfPresent(Date.self, forKey: .createdAt)
         self.updatedAt = try? container.decodeIfPresent(Date.self, forKey: .updatedAt)
+        self.dietaryPreferences = try? container.decodeIfPresent([String].self, forKey: .dietaryPreferences)
+        self.allergies = try? container.decodeIfPresent([String].self, forKey: .allergies)
+        self.mealsPerDay = try? container.decodeIfPresent(Int.self, forKey: .mealsPerDay)
     }
 
     nonisolated func encode(to encoder: Encoder) throws {
@@ -133,6 +150,9 @@ extension User {
         try container.encode(hasCompletedOnboarding, forKey: .hasCompletedOnboarding)
         try container.encodeIfPresent(createdAt, forKey: .createdAt)
         try container.encodeIfPresent(updatedAt, forKey: .updatedAt)
+        try container.encodeIfPresent(dietaryPreferences, forKey: .dietaryPreferences)
+        try container.encodeIfPresent(allergies, forKey: .allergies)
+        try container.encodeIfPresent(mealsPerDay, forKey: .mealsPerDay)
     }
 }
 

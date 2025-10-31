@@ -297,6 +297,102 @@ export const refreshTokens = pgTable(
 );
 
 // ============================================================================
+// PROFILE CHANGE AUDIT TABLE - Track profile field changes
+// ============================================================================
+
+export const profileChangeAudit = pgTable(
+  'profile_change_audit',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    // Change tracking
+    fieldName: varchar('field_name', { length: 100 }).notNull(),
+    oldValue: text('old_value'),
+    newValue: text('new_value'),
+
+    // Context
+    changedAt: timestamp('changed_at', { withTimezone: true }).defaultNow().notNull(),
+    ipAddress: varchar('ip_address', { length: 45 }),
+    userAgent: text('user_agent'),
+
+    // Impact tracking
+    triggeredPlanRegeneration: boolean('triggered_plan_regeneration').default(false).notNull(),
+    caloriesBefore: integer('calories_before'),
+    caloriesAfter: integer('calories_after'),
+    proteinBefore: integer('protein_before'),
+    proteinAfter: integer('protein_after'),
+  },
+  (table) => ({
+    userIdIdx: index('profile_audit_user_idx').on(table.userId, table.changedAt),
+    fieldNameIdx: index('profile_audit_field_idx').on(table.fieldName),
+    changedAtIdx: index('profile_audit_changed_at_idx').on(table.changedAt),
+  })
+);
+
+// ============================================================================
+// PROFILE METRICS TABLE - Daily health metrics (BMI, BMR, TDEE)
+// ============================================================================
+
+export const profileMetrics = pgTable(
+  'profile_metrics',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    // Metrics
+    bmi: decimal('bmi', { precision: 5, scale: 2 }).notNull(),
+    bmr: integer('bmr').notNull(),
+    tdee: integer('tdee').notNull(),
+
+    // Metadata
+    computedAt: timestamp('computed_at', { withTimezone: true }).defaultNow().notNull(),
+    version: integer('version').default(1).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('profile_metrics_user_id_idx').on(table.userId),
+    userComputedIdx: index('profile_metrics_user_computed_idx').on(table.userId, table.computedAt),
+    computedAtIdx: index('profile_metrics_computed_at_idx').on(table.computedAt),
+  })
+);
+
+// ============================================================================
+// METRICS ACKNOWLEDGEMENTS TABLE - Track when users acknowledge metrics
+// ============================================================================
+
+export const metricsAcknowledgements = pgTable(
+  'metrics_acknowledgements',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    // Acknowledgment details
+    acknowledgedAt: timestamp('acknowledged_at', { withTimezone: true }).defaultNow().notNull(),
+    version: integer('version').notNull(),
+    metricsComputedAt: timestamp('metrics_computed_at', { withTimezone: true }).notNull(),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('metrics_acknowledgements_user_id_idx').on(table.userId),
+    userAcknowledgedIdx: index('metrics_acknowledgements_user_acknowledged_idx').on(
+      table.userId,
+      table.acknowledgedAt
+    ),
+    acknowledgedAtIdx: index('metrics_acknowledgements_acknowledged_at_idx').on(
+      table.acknowledgedAt
+    ),
+  })
+);
+
+// ============================================================================
 // PLANS TABLE - Generated daily/weekly plans
 // ============================================================================
 
@@ -644,6 +740,9 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   smsLogs: many(smsLogs),
   photos: many(photos),
   refreshTokens: many(refreshTokens),
+  profileChangeAudit: many(profileChangeAudit),
+  profileMetrics: many(profileMetrics),
+  metricsAcknowledgements: many(metricsAcknowledgements),
 }));
 
 export const plansRelations = relations(plans, ({ one, many }) => ({
@@ -728,6 +827,27 @@ export const taskEvidenceRelations = relations(taskEvidence, ({ one }) => ({
 export const refreshTokensRelations = relations(refreshTokens, ({ one }) => ({
   user: one(users, {
     fields: [refreshTokens.userId],
+    references: [users.id],
+  }),
+}));
+
+export const profileChangeAuditRelations = relations(profileChangeAudit, ({ one }) => ({
+  user: one(users, {
+    fields: [profileChangeAudit.userId],
+    references: [users.id],
+  }),
+}));
+
+export const profileMetricsRelations = relations(profileMetrics, ({ one }) => ({
+  user: one(users, {
+    fields: [profileMetrics.userId],
+    references: [users.id],
+  }),
+}));
+
+export const metricsAcknowledgementsRelations = relations(metricsAcknowledgements, ({ one }) => ({
+  user: one(users, {
+    fields: [metricsAcknowledgements.userId],
     references: [users.id],
   }),
 }));
@@ -879,3 +999,33 @@ export type SelectUserBadge = InferSelectModel<typeof userBadges>;
  * Inferred type for inserting a user badge
  */
 export type InsertUserBadge = InferInsertModel<typeof userBadges>;
+
+/**
+ * Inferred type for selecting a profile change audit record
+ */
+export type SelectProfileChangeAudit = InferSelectModel<typeof profileChangeAudit>;
+
+/**
+ * Inferred type for inserting a profile change audit record
+ */
+export type InsertProfileChangeAudit = InferInsertModel<typeof profileChangeAudit>;
+
+/**
+ * Inferred type for selecting profile metrics
+ */
+export type SelectProfileMetrics = InferSelectModel<typeof profileMetrics>;
+
+/**
+ * Inferred type for inserting profile metrics
+ */
+export type InsertProfileMetrics = InferInsertModel<typeof profileMetrics>;
+
+/**
+ * Inferred type for selecting metrics acknowledgements
+ */
+export type SelectMetricsAcknowledgement = InferSelectModel<typeof metricsAcknowledgements>;
+
+/**
+ * Inferred type for inserting metrics acknowledgements
+ */
+export type InsertMetricsAcknowledgement = InferInsertModel<typeof metricsAcknowledgements>;

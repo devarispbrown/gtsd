@@ -64,6 +64,27 @@
       "when": 1761238689256,
       "tag": "0008_fast_sasquatch",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1761425000000,
+      "tag": "0009_kind_maddog",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1761425001000,
+      "tag": "0010_password_reset_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1761428000000,
+      "tag": "0011_profile_change_audit",
+      "breakpoints": true
     }
   ]
 }

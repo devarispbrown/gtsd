@@ -44,3 +44,6 @@ export * from './science-guards';
 
 // Type guards
 export * from './type-guards';
+
+// Profile types
+export * from './profile';

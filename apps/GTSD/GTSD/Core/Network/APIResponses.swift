@@ -36,3 +36,125 @@ nonisolated(unsafe) struct UpdatePreferencesResponse: Codable, Sendable {
         let mealsPerDay: Int
     }
 }
+
+// MARK: - Profile Responses
+
+/// Complete profile response from GET /v1/auth/profile
+nonisolated(unsafe) struct ProfileResponse: Codable, Sendable {
+    let user: UserBasic
+    let demographics: Demographics?
+    let health: HealthMetrics?
+    let goals: Goals?
+    let preferences: Preferences?
+    let targets: NutritionTargets?
+
+    struct UserBasic: Codable, Sendable {
+        let id: Int
+        let email: String
+        let name: String
+    }
+
+    struct Demographics: Codable, Sendable {
+        let dateOfBirth: String?
+        let gender: String?
+        let height: Double?
+    }
+
+    struct HealthMetrics: Codable, Sendable {
+        let currentWeight: Double?
+        let targetWeight: Double?
+    }
+
+    struct Goals: Codable, Sendable {
+        let primaryGoal: String?
+        let targetDate: String?
+        let activityLevel: String?
+    }
+
+    struct Preferences: Codable, Sendable {
+        let dietaryPreferences: [String]?
+        let allergies: [String]?
+        let mealsPerDay: Int?
+    }
+
+    struct NutritionTargets: Codable, Sendable {
+        let bmr: Int?
+        let tdee: Int?
+        let calorieTarget: Int?
+        let proteinTarget: Int?
+        let waterTarget: Int?
+    }
+
+    /// Convert to User model
+    func toUser() -> User {
+        User(
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            emailVerified: true,
+            hasCompletedOnboarding: true,
+            dietaryPreferences: preferences?.dietaryPreferences,
+            allergies: preferences?.allergies,
+            mealsPerDay: preferences?.mealsPerDay
+        )
+    }
+}
+
+/// Update request for health metrics
+nonisolated(unsafe) struct ProfileHealthUpdateRequest: Codable, Sendable {
+    let currentWeight: Double?
+    let targetWeight: Double?
+    let height: Double?
+    let dateOfBirth: String?
+}
+
+/// Update request for goals
+nonisolated(unsafe) struct ProfileGoalsUpdateRequest: Codable, Sendable {
+    let primaryGoal: String?
+    let targetWeight: Double?
+    let targetDate: String?
+    let activityLevel: String?
+}
+
+/// Update request for preferences
+nonisolated(unsafe) struct ProfilePreferencesUpdateRequest: Codable, Sendable {
+    let dietaryPreferences: [String]?
+    let allergies: [String]?
+    let mealsPerDay: Int?
+}
+
+/// Update response from profile endpoints
+nonisolated(unsafe) struct ProfileUpdateResponse: Codable, Sendable {
+    let success: Bool
+    let profile: ProfileData?
+    let planUpdated: Bool?
+    let targets: TargetsChange?
+    let changes: TargetChanges?
+    let message: String?
+
+    struct ProfileData: Codable, Sendable {
+        let currentWeight: String?
+        let targetWeight: String?
+        let height: String?
+        let dateOfBirth: String?
+        let primaryGoal: String?
+        let targetDate: String?
+        let activityLevel: String?
+        let dietaryPreferences: [String]?
+        let allergies: [String]?
+        let mealsPerDay: Int?
+    }
+
+    struct TargetsChange: Codable, Sendable {
+        let calorieTarget: Int?
+        let proteinTarget: Int?
+        let waterTarget: Int?
+    }
+
+    struct TargetChanges: Codable, Sendable {
+        let previousCalories: Int?
+        let newCalories: Int?
+        let previousProtein: Int?
+        let newProtein: Int?
+    }
+}
