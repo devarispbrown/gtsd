@@ -1,0 +1,38 @@
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# Dependencies
+node_modules/
+
+# TypeScript declaration files (already type-checked by tsc)
+*.d.ts
+
+# iOS build artifacts
+apps/GTSD/DerivedData/
+apps/GTSD/.build/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Documentation (markdown files don't need linting)
+*.md
+
+# Temporary and cache files
+.next/
+.turbo/
+*.log
+.DS_Store
+
+# Scripts (if any shell scripts)
+*.sh
+
+# Test/debugging scripts
+test-acknowledge.js
+apps/api/src/test-acknowledge.ts
+apps/api/src/investigate-user.ts
+apps/api/src/verify-fix.ts

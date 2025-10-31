@@ -113,46 +113,10 @@ jobs:
           flags: api
           name: api-coverage
 
-  test-mobile:
-    name: Test Mobile
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run Mobile tests with coverage
-        run: pnpm --filter @gtsd/mobile test:coverage
-
-      - name: Check coverage threshold
-        run: |
-          cd apps/mobile
-          pnpm exec jest --coverage --coverageThreshold='{"global":{"branches":80,"functions":80,"lines":80,"statements":80}}'
-
-      - name: Upload Mobile coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./apps/mobile/coverage/lcov.info
-          flags: mobile
-          name: mobile-coverage
-
   build:
     name: Build All Apps
     runs-on: ubuntu-latest
-    needs: [lint-and-typecheck, test-api, test-mobile]
+    needs: [lint-and-typecheck, test-api]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

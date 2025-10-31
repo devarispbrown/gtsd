@@ -1,0 +1,503 @@
+# OpenAPI 3.0 specification for Health Metrics Summary endpoints
+openapi: 3.0.3
+info:
+  title: GTSD Health Metrics API
+  description: |
+    Health metrics summary endpoints for displaying and acknowledging user health metrics.
+    Provides BMI, BMR, and TDEE calculations with user-friendly explanations.
+  version: 1.0.0
+  contact:
+    name: GTSD API Support
+
+servers:
+  - url: https://api.gtsd.com/v1
+    description: Production server
+  - url: https://staging-api.gtsd.com/v1
+    description: Staging server
+  - url: http://localhost:3000/v1
+    description: Local development server
+
+tags:
+  - name: Health Metrics
+    description: Endpoints for health metrics summary and acknowledgement
+
+paths:
+  /profile/metrics/summary:
+    get:
+      tags:
+        - Health Metrics
+      summary: Get health metrics summary
+      description: |
+        Retrieves the current user's health metrics including BMI, BMR, and TDEE
+        with user-friendly explanations. Also includes acknowledgement status to
+        determine if the user has reviewed their current metrics.
+
+        **Authentication Required:** Yes (JWT Bearer token)
+
+        **Rate Limit:** 60 requests per minute per user
+
+        **Performance:** p95 < 300ms
+
+        **Caching:** Metrics are computed on-demand and cached for 1 hour
+
+      operationId: getMetricsSummary
+      security:
+        - bearerAuth: []
+
+      responses:
+        '200':
+          description: Metrics summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsSummaryResponse'
+              examples:
+                acknowledgedMetrics:
+                  summary: User has acknowledged current metrics
+                  value:
+                    metrics:
+                      bmi: 22.5
+                      bmr: 1800
+                      tdee: 2500
+                      computedAt: '2025-10-28T12:00:00.000Z'
+                      version: 1
+                    explanations:
+                      bmi: 'Your BMI of 22.5 is in the normal weight range (18.5-24.9). This is considered healthy for most adults and is associated with lower risk of chronic diseases. BMI is calculated using your height and weight.'
+                      bmr: 'Your body burns 1,800 calories per day at complete rest. This is your Basal Metabolic Rate (BMR), which represents the energy needed for essential functions like breathing, circulation, and cell production.'
+                      tdee: 'You burn approximately 2,500 calories per day with your current activity level. This is your Total Daily Energy Expenditure (TDEE), which includes your BMR plus calories burned through activity and movement.'
+                    acknowledged: true
+                    acknowledgement:
+                      acknowledgedAt: '2025-10-28T12:30:00.000Z'
+                      version: 1
+
+                unacknowledgedMetrics:
+                  summary: User has not acknowledged current metrics
+                  value:
+                    metrics:
+                      bmi: 27.3
+                      bmr: 1950
+                      tdee: 2700
+                      computedAt: '2025-10-28T12:00:00.000Z'
+                      version: 1
+                    explanations:
+                      bmi: 'Your BMI of 27.3 is in the overweight range (25-29.9). Consider working with your healthcare provider to develop a plan for reaching a healthier weight range.'
+                      bmr: 'Your body burns 1,950 calories per day at complete rest. This is your Basal Metabolic Rate (BMR), which represents the energy needed for essential functions.'
+                      tdee: 'You burn approximately 2,700 calories per day with your current activity level. This is your Total Daily Energy Expenditure (TDEE).'
+                    acknowledged: false
+
+        '400':
+          description: Profile incomplete - user needs to complete onboarding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: 'Profile incomplete. Please complete your onboarding to view metrics.'
+                statusCode: 400
+                code: 'INCOMPLETE_PROFILE'
+                details:
+                  - 'Current weight is required'
+                  - 'Height is required'
+                  - 'Date of birth is required'
+
+        '401':
+          description: Unauthorized - missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: 'Authentication required'
+                statusCode: 401
+                code: 'UNAUTHORIZED'
+
+        '429':
+          description: Too many requests - rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: 'Rate limit exceeded. Please try again later.'
+                statusCode: 429
+                code: 'RATE_LIMIT_EXCEEDED'
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: 'Failed to compute health metrics. Please try again.'
+                statusCode: 500
+                code: 'COMPUTATION_FAILED'
+
+  /profile/metrics/acknowledge:
+    post:
+      tags:
+        - Health Metrics
+      summary: Acknowledge metrics
+      description: |
+        Records that the user has reviewed and acknowledged their current health metrics.
+        This prevents the metrics from being shown as "new" or "unacknowledged" in the UI.
+
+        **Authentication Required:** Yes (JWT Bearer token)
+
+        **Rate Limit:** 10 requests per minute per user
+
+        **Idempotency:** Safe to call multiple times with same version
+
+        **Version Matching:** The version and metricsComputedAt must match the current
+        metrics to prevent acknowledging stale data.
+
+      operationId: acknowledgeMetrics
+      security:
+        - bearerAuth: []
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcknowledgeMetricsRequest'
+            examples:
+              validRequest:
+                summary: Valid acknowledgement request
+                value:
+                  version: 1
+                  metricsComputedAt: '2025-10-28T12:00:00.000Z'
+
+      responses:
+        '200':
+          description: Metrics acknowledged successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcknowledgeMetricsResponse'
+              example:
+                success: true
+                acknowledgedAt: '2025-10-28T12:30:15.123Z'
+
+        '400':
+          description: Invalid request - validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                versionMismatch:
+                  summary: Version does not match current metrics
+                  value:
+                    error: 'Version mismatch. Current metrics version is 2, but request has version 1.'
+                    statusCode: 400
+                    code: 'VERSION_MISMATCH'
+
+                timestampMismatch:
+                  summary: Timestamp does not match current metrics
+                  value:
+                    error: 'Metrics timestamp mismatch. Please refresh and try again.'
+                    statusCode: 400
+                    code: 'TIMESTAMP_MISMATCH'
+
+                validationError:
+                  summary: Request validation failed
+                  value:
+                    error: 'Invalid request data'
+                    statusCode: 400
+                    code: 'INVALID_REQUEST'
+                    details:
+                      - 'version: Version must be a positive integer'
+                      - 'metricsComputedAt: Date must be in ISO 8601 format'
+
+        '401':
+          description: Unauthorized - missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: 'Authentication required'
+                statusCode: 401
+                code: 'UNAUTHORIZED'
+
+        '429':
+          description: Too many requests - rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: 'Rate limit exceeded. Please try again later.'
+                statusCode: 429
+                code: 'RATE_LIMIT_EXCEEDED'
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: 'Failed to save acknowledgement. Please try again.'
+                statusCode: 500
+                code: 'DATABASE_ERROR'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT authentication token obtained from login endpoint
+
+  schemas:
+    HealthMetrics:
+      type: object
+      required:
+        - bmi
+        - bmr
+        - tdee
+        - computedAt
+        - version
+      properties:
+        bmi:
+          type: number
+          format: double
+          minimum: 10
+          maximum: 60
+          description: |
+            Body Mass Index in kg/m². Calculated as weight(kg) / height(m)².
+            WHO classifications:
+            - < 18.5: Underweight
+            - 18.5-24.9: Normal weight
+            - 25-29.9: Overweight
+            - >= 30: Obese
+          example: 22.5
+
+        bmr:
+          type: integer
+          minimum: 500
+          maximum: 5000
+          description: |
+            Basal Metabolic Rate in kcal/day. Calculated using the Mifflin-St Jeor equation.
+            Represents calories burned at complete rest.
+          example: 1800
+
+        tdee:
+          type: integer
+          minimum: 500
+          maximum: 10000
+          description: |
+            Total Daily Energy Expenditure in kcal/day. BMR multiplied by activity level factor.
+            Represents total daily calorie burn including all activity.
+          example: 2500
+
+        computedAt:
+          type: string
+          format: date-time
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$'
+          description: ISO 8601 timestamp when metrics were computed (UTC)
+          example: '2025-10-28T12:00:00.000Z'
+
+        version:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: |
+            Metrics calculation version. Incremented when formulas or calculations change.
+            Used to track if user has seen the latest metrics.
+          example: 1
+
+    MetricsExplanations:
+      type: object
+      required:
+        - bmi
+        - bmr
+        - tdee
+      properties:
+        bmi:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: User-friendly explanation of BMI value and classification
+          example: 'Your BMI of 22.5 is in the normal weight range (18.5-24.9). This is considered healthy for most adults and is associated with lower risk of chronic diseases.'
+
+        bmr:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: User-friendly explanation of BMR value and what it represents
+          example: 'Your body burns 1,800 calories per day at complete rest. This is your Basal Metabolic Rate (BMR), which represents the energy needed for essential functions like breathing, circulation, and cell production.'
+
+        tdee:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: User-friendly explanation of TDEE value and activity impact
+          example: 'You burn approximately 2,500 calories per day with your current activity level. This is your Total Daily Energy Expenditure (TDEE), which includes your BMR plus calories burned through activity and movement.'
+
+    MetricsAcknowledgement:
+      type: object
+      required:
+        - acknowledgedAt
+        - version
+      properties:
+        acknowledgedAt:
+          type: string
+          format: date-time
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$'
+          description: ISO 8601 timestamp when user acknowledged the metrics (UTC)
+          example: '2025-10-28T12:30:00.000Z'
+
+        version:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: Version of metrics that was acknowledged
+          example: 1
+
+    MetricsSummaryResponse:
+      type: object
+      required:
+        - metrics
+        - explanations
+        - acknowledged
+      properties:
+        metrics:
+          $ref: '#/components/schemas/HealthMetrics'
+
+        explanations:
+          $ref: '#/components/schemas/MetricsExplanations'
+
+        acknowledged:
+          type: boolean
+          description: |
+            Whether user has acknowledged current metrics version.
+            - true: User has seen and acknowledged current version
+            - false: User needs to review metrics (new version or never acknowledged)
+          example: true
+
+        acknowledgement:
+          $ref: '#/components/schemas/MetricsAcknowledgement'
+          description: |
+            Acknowledgement metadata if metrics have been acknowledged.
+            Only present when acknowledged is true.
+
+    AcknowledgeMetricsRequest:
+      type: object
+      required:
+        - version
+        - metricsComputedAt
+      properties:
+        version:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: |
+            Version of metrics being acknowledged. Must match current metrics version
+            to prevent acknowledging stale data.
+          example: 1
+
+        metricsComputedAt:
+          type: string
+          format: date-time
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$'
+          description: |
+            Timestamp of metrics being acknowledged. Must match metrics.computedAt
+            from summary response to prevent race conditions.
+          example: '2025-10-28T12:00:00.000Z'
+
+    AcknowledgeMetricsResponse:
+      type: object
+      required:
+        - success
+        - acknowledgedAt
+      properties:
+        success:
+          type: boolean
+          description: Whether acknowledgement was successfully recorded (always true)
+          example: true
+
+        acknowledgedAt:
+          type: string
+          format: date-time
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$'
+          description: Server timestamp when acknowledgement was recorded (UTC)
+          example: '2025-10-28T12:30:15.123Z'
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - statusCode
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: 'Profile incomplete. Please complete your onboarding to view metrics.'
+
+        statusCode:
+          type: integer
+          description: HTTP status code
+          example: 400
+
+        code:
+          type: string
+          description: |
+            Machine-readable error code for client-side handling.
+            Possible values:
+            - INCOMPLETE_PROFILE: User settings not found or incomplete
+            - COMPUTATION_FAILED: Metrics computation failed
+            - VERSION_MISMATCH: Version mismatch in acknowledgement
+            - TIMESTAMP_MISMATCH: Metrics timestamp mismatch
+            - ALREADY_ACKNOWLEDGED: Acknowledgement already exists
+            - INVALID_REQUEST: Invalid request data
+            - DATABASE_ERROR: Database error
+            - UNAUTHORIZED: Authentication required
+            - RATE_LIMIT_EXCEEDED: Rate limit exceeded
+          example: 'INCOMPLETE_PROFILE'
+
+        details:
+          type: array
+          items:
+            type: string
+          description: Detailed error messages (for validation errors)
+          example:
+            - 'Current weight is required'
+            - 'Height is required'
+            - 'Date of birth is required'
+
+  examples:
+    normalWeightMetrics:
+      summary: User with normal BMI
+      value:
+        metrics:
+          bmi: 22.5
+          bmr: 1800
+          tdee: 2500
+          computedAt: '2025-10-28T12:00:00.000Z'
+          version: 1
+        explanations:
+          bmi: 'Your BMI of 22.5 is in the normal weight range.'
+          bmr: 'Your body burns 1,800 calories at rest.'
+          tdee: 'You burn 2,500 calories per day.'
+        acknowledged: true
+        acknowledgement:
+          acknowledgedAt: '2025-10-28T12:30:00.000Z'
+          version: 1
+
+    overweightMetrics:
+      summary: User with overweight BMI
+      value:
+        metrics:
+          bmi: 27.3
+          bmr: 1950
+          tdee: 2700
+          computedAt: '2025-10-28T12:00:00.000Z'
+          version: 1
+        explanations:
+          bmi: 'Your BMI of 27.3 is in the overweight range.'
+          bmr: 'Your body burns 1,950 calories at rest.'
+          tdee: 'You burn 2,700 calories per day.'
+        acknowledged: false

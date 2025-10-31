@@ -20,6 +20,7 @@ import smsRouter from './routes/sms';
 import progressRouter from './routes/progress/photos';
 import streaksRouter from './routes/streaks';
 import plansRouter from './routes/plans';
+import profileMetricsRouter from './routes/profile/metrics';
 
 export const createApp = (): Application => {
   const app = express();
@@ -33,6 +34,18 @@ export const createApp = (): Application => {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
+
+  // JSON parsing error handler
+  app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction): void => {
+    if (err instanceof SyntaxError && 'body' in err) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid JSON in request body',
+      });
+      return;
+    }
+    next(err);
+  });
 
   // Request context (must be first to ensure requestId is available)
   app.use(requestContextMiddleware);
@@ -63,6 +76,7 @@ export const createApp = (): Application => {
   app.use('/v1', streaksRouter);
   app.use('/v1', plansRouter);
   app.use('/v1/progress', progressRouter);
+  app.use('/v1/profile', profileMetricsRouter);
 
   // Error handlers (must be last)
   app.use(notFoundHandler);
