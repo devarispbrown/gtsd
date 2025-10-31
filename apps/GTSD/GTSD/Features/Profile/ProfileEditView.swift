@@ -2,264 +2,518 @@
 //  ProfileEditView.swift
 //  GTSD
 //
-//  Created by Claude on 2025-10-27.
+//  Created by Claude on 2025-10-30.
+//  Comprehensive profile editing with 7 sections, validation, and optimistic UI
 //
 
 import SwiftUI
 import PhotosUI
 
 struct ProfileEditView: View {
-    @StateObject private var viewModel = ProfileEditViewModel()
+    @StateObject private var viewModel: ProfileEditViewModel
     @Environment(\.dismiss) private var dismiss
-    @State private var showPlanChanges = false
+
+    init(
+        apiClient: any APIClientProtocol = ServiceContainer.shared.apiClient,
+        authService: any AuthenticationServiceProtocol = ServiceContainer.shared.authService
+    ) {
+        _viewModel = StateObject(wrappedValue: ProfileEditViewModel(
+            apiClient: apiClient,
+            authService: authService
+        ))
+    }
 
     var body: some View {
         NavigationStack {
-            Group {
-                if viewModel.isLoading {
-                    LoadingView(message: "Loading profile...")
-                } else {
-                    editForm
-                }
-            }
-            .navigationTitle("Edit Profile")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
+            ZStack {
+                Group {
+                    if viewModel.isLoading {
+                        LoadingView(message: "Loading profile...")
+                    } else {
+                        profileForm
                     }
-                    .accessibilityLabel("Cancel editing")
-                    .accessibilityHint("Double tap to discard changes and return")
                 }
+                .navigationTitle("Edit Profile")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Cancel") {
+                            dismiss()
+                        }
+                        .accessibilityLabel("Cancel editing")
+                        .accessibilityHint("Double tap to discard changes and return")
+                    }
 
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
-                        _Concurrency.Task {
-                            let success = await viewModel.saveChanges()
-                            if success {
-                                // Check if plan has significant changes
-                                if viewModel.planHasSignificantChanges {
-                                    showPlanChanges = true
-                                } else {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Save") {
+                            _Concurrency.Task {
+                                let success = await viewModel.saveProfile()
+                                if success {
+                                    // Wait for toast to show, then dismiss
+                                    try? await _Concurrency.Task.sleep(for: .seconds(1))
                                     dismiss()
                                 }
                             }
                         }
+                        .disabled(!viewModel.isValid || !viewModel.hasChanges || viewModel.isSaving)
+                        .accessibilityLabel("Save profile changes")
+                        .accessibilityHint(viewModel.isValid ? "Double tap to save your profile updates" : "Button disabled. Complete all required fields to save")
                     }
-                    .disabled(!viewModel.isValid || viewModel.isSaving)
-                    .accessibilityLabel("Save profile changes")
-                    .accessibilityHint(viewModel.isValid ? "Double tap to save your profile updates" : "Button disabled. Complete all required fields to save")
                 }
-            }
-            .task {
-                await viewModel.loadProfile()
-            }
-            .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
-                Button("OK") {
-                    viewModel.errorMessage = nil
+                .task {
+                    await viewModel.loadProfile()
                 }
-            } message: {
-                Text(viewModel.errorMessage ?? "")
-            }
-            .sheet(isPresented: $showPlanChanges) {
-                PlanChangeSummaryView(planData: viewModel.currentPlanData)
-                    .onDisappear {
-                        // Dismiss profile edit view after showing plan changes
-                        dismiss()
+                .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
+                    Button("OK") {
+                        viewModel.errorMessage = nil
                     }
+                } message: {
+                    Text(viewModel.errorMessage ?? "")
+                }
+
+                // Success toast overlay
+                SuccessToast(
+                    message: "Profile updated successfully",
+                    planWillUpdate: viewModel.toastPlanWillUpdate,
+                    targetChanges: viewModel.toastTargetChanges,
+                    isShowing: $viewModel.showSuccessToast
+                )
+
+                // Offline notice
+                if viewModel.isOffline {
+                    VStack {
+                        GTSDCard {
+                            HStack(spacing: Spacing.sm) {
+                                Image(systemName: "wifi.slash")
+                                    .foregroundColor(.warningColor)
+                                Text("You're offline. Changes will sync when you reconnect.")
+                                    .font(.bodySmall)
+                                    .foregroundColor(.textSecondary)
+                            }
+                        }
+                        .padding()
+                        Spacer()
+                    }
+                }
             }
         }
     }
 
-    private var editForm: some View {
+    // MARK: - Profile Form
+
+    private var profileForm: some View {
         Form {
-            // Profile Photo Section
+            // Section 1: About You (Demographics)
             Section {
-                VStack(spacing: Spacing.md) {
-                    if let image = viewModel.profileImage {
-                        Image(uiImage: image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 100, height: 100)
-                            .clipShape(Circle())
-                    } else {
-                        ZStack {
-                            Circle()
-                                .fill(Color.primaryColor.gradient)
-                                .frame(width: 100, height: 100)
-
-                            Image(systemName: "person.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(.white)
-                        }
-                    }
-
-                    PhotosPicker(
-                        selection: $viewModel.selectedPhoto,
-                        matching: .images
-                    ) {
-                        HStack {
-                            Image(systemName: "camera.fill")
-                                .font(.system(size: IconSize.sm))
-                            Text("Change Photo")
-                                .font(.titleMedium)
-                        }
-                        .foregroundColor(.primaryColor)
-                    }
-                    .onChange(of: viewModel.selectedPhoto) { _, _ in
-                        _Concurrency.Task {
-                            await viewModel.loadSelectedPhoto()
-                        }
-                    }
-                    .accessibilityLabel("Change profile photo")
-                    .accessibilityHint("Double tap to select a new profile photo from your library")
-                    .minimumTouchTarget()
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, Spacing.md)
-            }
-
-            // Basic Info Section
-            Section("Basic Information") {
-                VStack(alignment: .leading, spacing: Spacing.xs) {
-                    TextField("Full Name", text: $viewModel.name)
-                        .textContentType(.name)
-                        .autocapitalization(.words)
-                        .accessibilityLabel("Full name")
-                        .accessibilityHint("Enter your full name")
-
-                    if let error = viewModel.nameError, !viewModel.name.isEmpty {
-                        Text(error)
-                            .font(.labelSmall)
-                            .foregroundColor(.errorColor)
-                            .accessibilityLabel("Name validation error: \(error)")
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: Spacing.xs) {
-                    TextField("Email", text: $viewModel.email)
-                        .textContentType(.emailAddress)
-                        .keyboardType(.emailAddress)
-                        .autocapitalization(.none)
-                        .accessibilityLabel("Email address")
-                        .accessibilityHint("Enter your email address")
-
-                    if let error = viewModel.emailError, !viewModel.email.isEmpty {
-                        Text(error)
-                            .font(.labelSmall)
-                            .foregroundColor(.errorColor)
-                            .accessibilityLabel("Email validation error: \(error)")
-                    }
-                }
-            }
-
-            // Health Metrics Section (Read-Only)
-            Section {
-                VStack(alignment: .leading, spacing: Spacing.sm) {
+                VStack(alignment: .leading, spacing: Spacing.md) {
+                    // Section header with badge
                     HStack {
-                        Image(systemName: "info.circle")
-                            .foregroundColor(.secondaryColor)
-                        Text("Health Metrics")
-                            .font(.titleSmall)
-                            .fontWeight(.semibold)
-                    }
-
-                    Text("Health metrics (weight, height, activity level) can only be updated during initial onboarding. To make changes, please contact support or re-complete onboarding.")
-                        .font(.bodySmall)
-                        .foregroundColor(.textSecondary)
-                        .padding(.top, Spacing.xs)
-
-                    // Show current values as read-only
-                    if !viewModel.currentWeight.isEmpty || !viewModel.targetWeight.isEmpty {
                         VStack(alignment: .leading, spacing: Spacing.xs) {
-                            if !viewModel.currentWeight.isEmpty {
-                                HStack {
-                                    Text("Current Weight:")
-                                        .foregroundColor(.textSecondary)
-                                    Spacer()
-                                    Text("\(viewModel.currentWeight) kg")
-                                        .fontWeight(.medium)
-                                }
-                            }
-                            if !viewModel.targetWeight.isEmpty {
-                                HStack {
-                                    Text("Target Weight:")
-                                        .foregroundColor(.textSecondary)
-                                    Spacer()
-                                    Text("\(viewModel.targetWeight) kg")
-                                        .fontWeight(.medium)
-                                }
+                            Text("About You")
+                                .font(.titleMedium)
+                                .fontWeight(.semibold)
+                            Text("Basic information that affects your metabolic calculations")
+                                .font(.bodySmall)
+                                .foregroundColor(.textSecondary)
+                        }
+                        Spacer()
+                        Text("🔄")
+                            .font(.system(size: 20))
+                            .accessibilityLabel("Affects your plan")
+                    }
+
+                    // Date of Birth
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        DatePicker(
+                            "Date of Birth",
+                            selection: $viewModel.dateOfBirth,
+                            in: ...Date(),
+                            displayedComponents: .date
+                        )
+                        .accessibilityLabel("Date of birth")
+                        .accessibilityHint("Select your date of birth. Used for metabolic calculations.")
+
+                        Text("Your age affects calorie calculations. We use this to estimate your basal metabolic rate (BMR).")
+                            .font(.labelSmall)
+                            .foregroundColor(.textSecondary)
+
+                        if let error = viewModel.ageError {
+                            Text(error)
+                                .font(.labelSmall)
+                                .foregroundColor(.errorColor)
+                        }
+                    }
+
+                    // Gender
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Picker("Gender", selection: $viewModel.gender) {
+                            ForEach(Gender.allCases, id: \.self) { gender in
+                                Text(gender.displayName).tag(gender)
                             }
                         }
-                        .padding(.top, Spacing.sm)
+                        .accessibilityLabel("Gender")
+                        .accessibilityHint("Select your gender. Used for metabolic calculations.")
+
+                        Text("Used for accurate metabolic calculations. We support all gender identities.")
+                            .font(.labelSmall)
+                            .foregroundColor(.textSecondary)
+                    }
+
+                    // Height
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        HStack {
+                            TextField("Height", text: $viewModel.heightCm)
+                                .keyboardType(.decimalPad)
+                                .accessibilityLabel("Height in centimeters")
+                                .accessibilityHint("Enter your height. This affects BMI and calorie calculations.")
+
+                            Text("cm")
+                                .foregroundColor(.textSecondary)
+                        }
+
+                        Text("Enter your height. This affects BMI and calorie calculations.")
+                            .font(.labelSmall)
+                            .foregroundColor(.textSecondary)
+
+                        if let error = viewModel.heightError {
+                            Text(error)
+                                .font(.labelSmall)
+                                .foregroundColor(.errorColor)
+                        }
                     }
                 }
             }
+            .listRowBackground(Color.backgroundSecondary.opacity(0.5))
 
-            // Dietary Preferences Section
-            Section("Dietary Preferences") {
-                TextField("None", text: $viewModel.dietaryPreferences)
-                    .accessibilityLabel("Dietary preferences")
-                    .accessibilityHint("Enter any dietary preferences or restrictions")
-
-                HStack {
-                    TextField("Meals per Day", text: $viewModel.mealsPerDay)
-                        .keyboardType(.numberPad)
-                        .accessibilityLabel("Number of meals per day")
-                        .accessibilityHint("Enter the number of meals you prefer each day")
-
-                    Text("meals")
-                        .foregroundColor(.textSecondary)
-                }
-            }
-
-            // Allergies Section
-            Section("Allergies") {
-                TextField("None", text: $viewModel.allergies)
-                    .accessibilityLabel("Food allergies")
-                    .accessibilityHint("Enter any food allergies or sensitivities")
-            }
-
-            // Save Button Section
+            // Section 2: Current Status (Current Weight)
             Section {
-                GTSDButton(
-                    viewModel.isRecomputingPlan ? "Updating Plan..." : "Save Changes",
-                    style: .primary,
-                    isLoading: viewModel.isSaving,
-                    isDisabled: !viewModel.isValid || !viewModel.hasChanges
-                ) {
-                    _Concurrency.Task {
-                        let success = await viewModel.saveChanges()
-                        if success {
-                            // Check if plan has significant changes
-                            if viewModel.planHasSignificantChanges {
-                                showPlanChanges = true
-                            } else {
-                                dismiss()
+                VStack(alignment: .leading, spacing: Spacing.md) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: Spacing.xs) {
+                            Text("Current Status")
+                                .font(.titleMedium)
+                                .fontWeight(.semibold)
+                            Text("Track your current weight to monitor progress")
+                                .font(.bodySmall)
+                                .foregroundColor(.textSecondary)
+                        }
+                        Spacer()
+                        Text("🔄")
+                            .font(.system(size: 20))
+                            .accessibilityLabel("Affects your plan")
+                    }
+
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        HStack {
+                            TextField("Current Weight", text: $viewModel.currentWeightKg)
+                                .keyboardType(.decimalPad)
+                                .font(.titleLarge)
+                                .fontWeight(.semibold)
+                                .accessibilityLabel("Current weight in kilograms")
+                                .accessibilityHint("Enter your current weight for progress tracking")
+
+                            Text("kg")
+                                .font(.titleMedium)
+                                .foregroundColor(.textSecondary)
+                        }
+
+                        Text("Update this regularly to track your progress. Changes >1kg may adjust your targets.")
+                            .font(.labelSmall)
+                            .foregroundColor(.textSecondary)
+
+                        if let error = viewModel.currentWeightError {
+                            Text(error)
+                                .font(.labelSmall)
+                                .foregroundColor(.errorColor)
+                        }
+                    }
+                }
+            }
+
+            // Section 3: Your Goal
+            Section {
+                VStack(alignment: .leading, spacing: Spacing.md) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: Spacing.xs) {
+                            Text("Your Goal")
+                                .font(.titleMedium)
+                                .fontWeight(.semibold)
+                            Text("Define what you want to achieve and when")
+                                .font(.bodySmall)
+                                .foregroundColor(.textSecondary)
+                        }
+                        Spacer()
+                        Text("🔄")
+                            .font(.system(size: 20))
+                            .accessibilityLabel("Affects your plan")
+                    }
+
+                    // Primary Goal
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Picker("Primary Goal", selection: $viewModel.primaryGoal) {
+                            ForEach(PrimaryGoal.allCases, id: \.self) { goal in
+                                Text(goal.displayName).tag(goal)
+                            }
+                        }
+                        .accessibilityLabel("Primary fitness goal")
+
+                        Text("Your goal determines your calorie surplus or deficit.")
+                            .font(.labelSmall)
+                            .foregroundColor(.textSecondary)
+                    }
+
+                    // Target Weight
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        HStack {
+                            TextField("Target Weight", text: $viewModel.targetWeightKg)
+                                .keyboardType(.decimalPad)
+                                .accessibilityLabel("Target weight in kilograms")
+
+                            Text("kg")
+                                .foregroundColor(.textSecondary)
+                        }
+
+                        Text("Your desired weight. This affects your daily calorie target.")
+                            .font(.labelSmall)
+                            .foregroundColor(.textSecondary)
+
+                        if let error = viewModel.targetWeightError {
+                            Text(error)
+                                .font(.labelSmall)
+                                .foregroundColor(.errorColor)
+                        }
+                    }
+
+                    // Target Date
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        DatePicker(
+                            "Target Date",
+                            selection: $viewModel.targetDate,
+                            in: Date()...,
+                            displayedComponents: .date
+                        )
+                        .accessibilityLabel("Target achievement date")
+
+                        Text("When you want to reach your goal. This affects the pace of your plan.")
+                            .font(.labelSmall)
+                            .foregroundColor(.textSecondary)
+                    }
+                }
+            }
+
+            // Section 4: Activity & Lifestyle
+            Section {
+                VStack(alignment: .leading, spacing: Spacing.md) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: Spacing.xs) {
+                            Text("Activity & Lifestyle")
+                                .font(.titleMedium)
+                                .fontWeight(.semibold)
+                            Text("How active are you on a typical day?")
+                                .font(.bodySmall)
+                                .foregroundColor(.textSecondary)
+                        }
+                        Spacer()
+                        Text("🔄")
+                            .font(.system(size: 20))
+                            .accessibilityLabel("Affects your plan")
+                    }
+
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Picker("Activity Level", selection: $viewModel.activityLevel) {
+                            ForEach(ActivityLevel.allCases, id: \.self) { level in
+                                VStack(alignment: .leading) {
+                                    Text(level.displayName)
+                                        .font(.bodyMedium)
+                                    Text(level.description)
+                                        .font(.labelSmall)
+                                        .foregroundColor(.textSecondary)
+                                }
+                                .tag(level)
+                            }
+                        }
+                        .accessibilityLabel("Activity level")
+
+                        Text("Your activity level affects your Total Daily Energy Expenditure (TDEE).")
+                            .font(.labelSmall)
+                            .foregroundColor(.textSecondary)
+                    }
+                }
+            }
+
+            // Section 5: Diet & Preferences
+            Section {
+                VStack(alignment: .leading, spacing: Spacing.md) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Text("Diet & Preferences")
+                            .font(.titleMedium)
+                            .fontWeight(.semibold)
+                        Text("Dietary restrictions and meal preferences")
+                            .font(.bodySmall)
+                            .foregroundColor(.textSecondary)
+                    }
+
+                    // Dietary Preferences
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Text("Dietary Preferences")
+                            .font(.bodyMedium)
+                            .fontWeight(.medium)
+
+                        TagInputField(
+                            placeholder: "Type and press Enter (e.g., Vegetarian, Low Carb)",
+                            tags: $viewModel.dietaryPreferences
+                        )
+
+                        Text("Add up to 10 dietary preferences. These help personalize your meal suggestions.")
+                            .font(.labelSmall)
+                            .foregroundColor(.textSecondary)
+
+                        if viewModel.dietaryPreferences.count > 10 {
+                            Text("Maximum 10 dietary preferences allowed")
+                                .font(.labelSmall)
+                                .foregroundColor(.errorColor)
+                        }
+                    }
+
+                    // Allergies
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Text("Allergies & Restrictions")
+                            .font(.bodyMedium)
+                            .fontWeight(.medium)
+
+                        TagInputField(
+                            placeholder: "Type and press Enter (e.g., Nuts, Dairy, Soy)",
+                            tags: $viewModel.allergies
+                        )
+
+                        Text("Add up to 20 allergies or food restrictions. We'll exclude these from your meal plans.")
+                            .font(.labelSmall)
+                            .foregroundColor(.textSecondary)
+
+                        if viewModel.allergies.count > 20 {
+                            Text("Maximum 20 allergies allowed")
+                                .font(.labelSmall)
+                                .foregroundColor(.errorColor)
+                        }
+                    }
+
+                    // Meals Per Day
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Stepper(
+                            "Meals Per Day: \(viewModel.mealsPerDay)",
+                            value: $viewModel.mealsPerDay,
+                            in: 1...10
+                        )
+                        .accessibilityLabel("Meals per day: \(viewModel.mealsPerDay)")
+
+                        Text("How many meals you prefer to eat daily. This helps structure your meal plans.")
+                            .font(.labelSmall)
+                            .foregroundColor(.textSecondary)
+
+                        if let error = viewModel.mealsPerDayError {
+                            Text(error)
+                                .font(.labelSmall)
+                                .foregroundColor(.errorColor)
+                        }
+                    }
+                }
+            }
+
+            // Section 6: Current Targets (Read-Only)
+            if let profile = viewModel.originalProfile {
+                Section {
+                    VStack(alignment: .leading, spacing: Spacing.md) {
+                        VStack(alignment: .leading, spacing: Spacing.xs) {
+                            Text("Current Targets")
+                                .font(.titleMedium)
+                                .fontWeight(.semibold)
+                            Text("Your daily nutrition targets (automatically calculated)")
+                                .font(.bodySmall)
+                                .foregroundColor(.textSecondary)
+                        }
+
+                        if let metrics = profile.calculatedMetrics {
+                            VStack(spacing: Spacing.sm) {
+                                targetRow(label: "BMR (Basal Metabolic Rate)", value: "\(metrics.bmr) cal", info: "Calories burned at rest")
+                                Divider()
+                                targetRow(label: "TDEE (Total Daily Energy)", value: "\(metrics.tdee) cal", info: "Total calories burned daily")
+                                Divider()
+                                targetRow(label: "Daily Calorie Target", value: "\(metrics.targetCalories) cal", info: "Your personalized calorie goal")
+                                Divider()
+                                targetRow(label: "Daily Protein Target", value: "\(metrics.targetProtein)g", info: "Recommended protein intake")
                             }
                         }
                     }
                 }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
+                .listRowBackground(Color.backgroundSecondary.opacity(0.3))
+            }
+
+            // Section 7: Validation Errors Summary
+            if !viewModel.validationErrors.isEmpty {
+                Section {
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.errorColor)
+                            Text("Please fix the following errors:")
+                                .font(.bodyMedium)
+                                .fontWeight(.medium)
+                                .foregroundColor(.errorColor)
+                        }
+
+                        ForEach(viewModel.validationErrors) { error in
+                            Text("• \(error.message)")
+                                .font(.bodySmall)
+                                .foregroundColor(.textSecondary)
+                        }
+                    }
+                }
+                .listRowBackground(Color.errorColor.opacity(0.1))
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.backgroundPrimary)
+    }
+
+    // MARK: - Helper Views
+
+    private func targetRow(label: String, value: String, info: String) -> some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: Spacing.xxs) {
+                Text(label)
+                    .font(.bodySmall)
+                    .foregroundColor(.textSecondary)
+                Text(info)
+                    .font(.labelSmall)
+                    .foregroundColor(.textTertiary)
+            }
+
+            Spacer()
+
+            Text(value)
+                .font(.bodyMedium)
+                .fontWeight(.semibold)
+                .foregroundColor(.textPrimary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value). \(info)")
     }
 }
 
-// MARK: - Placeholder Modifier
+// MARK: - ProfileResponse Extension
 
-extension View {
-    func placeholder<Content: View>(
-        when shouldShow: Bool,
-        alignment: Alignment = .leading,
-        @ViewBuilder placeholder: () -> Content
-    ) -> some View {
-        ZStack(alignment: alignment) {
-            placeholder().opacity(shouldShow ? 1 : 0)
-            self
-        }
+extension ProfileResponse {
+    struct CalculatedMetrics {
+        let bmr: Int
+        let tdee: Int
+        let targetCalories: Int
+        let targetProtein: Int
+    }
+
+    var calculatedMetrics: CalculatedMetrics? {
+        // This would ideally come from the API response
+        // For now, return nil until backend provides these values
+        return nil
     }
 }
 
