@@ -14,6 +14,7 @@
 		3539962A835EEA069D51E1E4 /* OnboardingViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB1D314FB10E47E0B15394C3 /* OnboardingViewModelTests.swift */; };
 		3C24158AB21ECF1724EFD69E /* HomeViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3186E1DABD1F8DDC32966290 /* HomeViewModelTests.swift */; };
 		48BCA631A5BE7DEBA5DA71D2 /* PlanServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87231075CE57085A937E551C /* PlanServiceTests.swift */; };
+		542A58C52EB55A4D000BCF00 /* MetricsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 542A58C42EB55A4D000BCF00 /* MetricsViewModelTests.swift */; };
 		713E257A6FF31C8113748C24 /* ProfileEditViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F28407A86F4D5943E156024 /* ProfileEditViewModelTests.swift */; };
 		873A89B68351920AD25441CC /* PlanStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B4EE51461F77391D417DEB9 /* PlanStoreTests.swift */; };
 		99D4EBD87286F3F54922FFB2 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C43C8412ADADC2B4643B2B4 /* Foundation.framework */; };
@@ -35,6 +36,7 @@
 		1E12BC48508D3DF2C5CA4F2C /* GTSDTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GTSDTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3186E1DABD1F8DDC32966290 /* HomeViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomeViewModelTests.swift; path = ViewModels/HomeViewModelTests.swift; sourceTree = "<group>"; };
 		3A88D57E3BB3F8FFF3919E07 /* TestMocks.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestMocks.swift; path = Mocks/TestMocks.swift; sourceTree = "<group>"; };
+		542A58C42EB55A4D000BCF00 /* MetricsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricsViewModelTests.swift; sourceTree = "<group>"; };
 		5460060D2EAF65B500C729AF /* GTSD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GTSD.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C43C8412ADADC2B4643B2B4 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		6EB45F37C352EFAD364C2B87 /* ProfileZeroStateCardTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProfileZeroStateCardTests.swift; path = Views/ProfileZeroStateCardTests.swift; sourceTree = "<group>"; };
@@ -91,6 +93,7 @@
 		44D1F6A72949350DBF6BC675 /* GTSDTests */ = {
 			isa = PBXGroup;
 			children = (
+				542A58C42EB55A4D000BCF00 /* MetricsViewModelTests.swift */,
 				3A88D57E3BB3F8FFF3919E07 /* TestMocks.swift */,
 				8F28407A86F4D5943E156024 /* ProfileEditViewModelTests.swift */,
 				3186E1DABD1F8DDC32966290 /* HomeViewModelTests.swift */,
@@ -243,6 +246,7 @@
 				713E257A6FF31C8113748C24 /* ProfileEditViewModelTests.swift in Sources */,
 				3C24158AB21ECF1724EFD69E /* HomeViewModelTests.swift in Sources */,
 				3539962A835EEA069D51E1E4 /* OnboardingViewModelTests.swift in Sources */,
+				542A58C52EB55A4D000BCF00 /* MetricsViewModelTests.swift in Sources */,
 				1E3351A677BBDB8DF25D4439 /* MobileUXIntegrationTests.swift in Sources */,
 				25283497CF200A7CB93B08C2 /* PlanIntegrationTests.swift in Sources */,
 				1D7CD01B3725D6EA103CAB75 /* GTSDTests.swift in Sources */,

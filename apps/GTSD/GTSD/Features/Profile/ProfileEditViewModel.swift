@@ -138,7 +138,7 @@ final class ProfileEditViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     // Original state for rollback
-    private var originalProfile: ProfileResponse?
+    var originalProfile: ProfileResponse?
     private var savedProfile: ProfileResponse?
 
     init(
@@ -172,7 +172,8 @@ final class ProfileEditViewModel: ObservableObject {
 
         do {
             // Fetch full profile from API
-            let profile: ProfileResponse = try await apiClient.request(.getProfile)
+            let response: GetProfileResponse = try await apiClient.request(.getProfile)
+            let profile = response.profile
 
             originalProfile = profile
             savedProfile = profile
@@ -197,9 +198,19 @@ final class ProfileEditViewModel: ObservableObject {
         email = profile.user.email
 
         // Demographics
-        if let dob = profile.demographics?.dateOfBirth,
-           let date = ISO8601DateFormatter().date(from: dob) {
-            dateOfBirth = date
+        if let dob = profile.demographics?.dateOfBirth {
+            // Configure formatter to handle fractional seconds from API
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+            if let date = formatter.date(from: dob) {
+                Logger.info("Loading profile dateOfBirth: \(dob) → Date: \(date)")
+                dateOfBirth = date
+            } else {
+                Logger.error("Failed to parse dateOfBirth: \(dob)")
+            }
+        } else {
+            Logger.error("No dateOfBirth found in profile response")
         }
         if let genderStr = profile.demographics?.gender,
            let genderEnum = Gender(rawValue: genderStr) {
@@ -222,9 +233,14 @@ final class ProfileEditViewModel: ObservableObject {
            let goalEnum = PrimaryGoal(rawValue: goalStr) {
             primaryGoal = goalEnum
         }
-        if let targetDateStr = profile.goals?.targetDate,
-           let date = ISO8601DateFormatter().date(from: targetDateStr) {
-            targetDate = date
+        if let targetDateStr = profile.goals?.targetDate {
+            // Configure formatter to handle fractional seconds from API
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+            if let date = formatter.date(from: targetDateStr) {
+                targetDate = date
+            }
         }
         if let activityStr = profile.goals?.activityLevel,
            let activityEnum = ActivityLevel(rawValue: activityStr) {
@@ -336,15 +352,132 @@ final class ProfileEditViewModel: ObservableObject {
     var hasChanges: Bool {
         guard let original = originalProfile else { return false }
 
-        return name != original.user.name ||
-               email != original.user.email ||
-               !heightCm.isEmpty ||
-               !currentWeightKg.isEmpty ||
-               !targetWeightKg.isEmpty ||
-               dietaryPreferences != (original.preferences?.dietaryPreferences ?? []) ||
-               allergies != (original.preferences?.allergies ?? []) ||
-               mealsPerDay != (original.preferences?.mealsPerDay ?? 3) ||
-               selectedPhoto != nil
+        // Check basic info changes
+        let nameChanged = name != original.user.name
+        let emailChanged = email != original.user.email
+
+        // Check demographic changes
+        let dobChanged: Bool = {
+            guard let originalDob = original.demographics?.dateOfBirth,
+                  let originalDate = ISO8601DateFormatter().date(from: originalDob) else {
+                return false
+            }
+            return !Calendar.current.isDate(dateOfBirth, inSameDayAs: originalDate)
+        }()
+
+        let genderChanged: Bool = {
+            guard let originalGender = original.demographics?.gender else { return false }
+            return gender.rawValue != originalGender
+        }()
+
+        let heightChanged: Bool = {
+            let originalHeight = original.demographics?.height
+            let currentHeight = heightCm.isEmpty ? nil : Double(heightCm)
+
+            // Both nil - no change
+            if originalHeight == nil && currentHeight == nil {
+                return false
+            }
+
+            // One nil, other has value - change detected
+            if (originalHeight == nil) != (currentHeight == nil) {
+                return true
+            }
+
+            // Both have values - compare with tolerance
+            if let orig = originalHeight, let curr = currentHeight {
+                return abs(curr - orig) > 0.1
+            }
+
+            return false
+        }()
+
+        // Check health metrics changes
+        let currentWeightChanged: Bool = {
+            let originalWeight = original.health?.currentWeight
+            let currentWeight = currentWeightKg.isEmpty ? nil : Double(currentWeightKg)
+
+            // Both nil - no change
+            if originalWeight == nil && currentWeight == nil {
+                return false
+            }
+
+            // One nil, other has value - change detected
+            if (originalWeight == nil) != (currentWeight == nil) {
+                return true
+            }
+
+            // Both have values - compare with tolerance
+            if let orig = originalWeight, let curr = currentWeight {
+                return abs(curr - orig) > 0.1
+            }
+
+            return false
+        }()
+
+        let targetWeightChanged: Bool = {
+            let originalTarget = original.health?.targetWeight
+            let currentTarget = targetWeightKg.isEmpty ? nil : Double(targetWeightKg)
+
+            // Both nil - no change
+            if originalTarget == nil && currentTarget == nil {
+                return false
+            }
+
+            // One nil, other has value - change detected
+            if (originalTarget == nil) != (currentTarget == nil) {
+                return true
+            }
+
+            // Both have values - compare with tolerance
+            if let orig = originalTarget, let curr = currentTarget {
+                return abs(curr - orig) > 0.1
+            }
+
+            return false
+        }()
+
+        // Check goals changes
+        let primaryGoalChanged: Bool = {
+            guard let originalGoal = original.goals?.primaryGoal else { return false }
+            return primaryGoal.rawValue != originalGoal
+        }()
+
+        let targetDateChanged: Bool = {
+            guard let originalTargetDate = original.goals?.targetDate,
+                  let originalDate = ISO8601DateFormatter().date(from: originalTargetDate) else {
+                return false
+            }
+            return !Calendar.current.isDate(targetDate, inSameDayAs: originalDate)
+        }()
+
+        let activityLevelChanged: Bool = {
+            guard let originalActivity = original.goals?.activityLevel else { return false }
+            return activityLevel.rawValue != originalActivity
+        }()
+
+        // Check preferences changes
+        let dietaryPreferencesChanged = dietaryPreferences != (original.preferences?.dietaryPreferences ?? [])
+        let allergiesChanged = allergies != (original.preferences?.allergies ?? [])
+        let mealsPerDayChanged = mealsPerDay != (original.preferences?.mealsPerDay ?? 3)
+
+        // Check photo changes
+        let photoChanged = selectedPhoto != nil
+
+        return nameChanged ||
+               emailChanged ||
+               dobChanged ||
+               genderChanged ||
+               heightChanged ||
+               currentWeightChanged ||
+               targetWeightChanged ||
+               primaryGoalChanged ||
+               targetDateChanged ||
+               activityLevelChanged ||
+               dietaryPreferencesChanged ||
+               allergiesChanged ||
+               mealsPerDayChanged ||
+               photoChanged
     }
 
     // MARK: - Optimistic UI Updates with Rollback
@@ -364,6 +497,12 @@ final class ProfileEditViewModel: ObservableObject {
             return false
         }
 
+        // Check for changes
+        guard hasChanges else {
+            successMessage = "No changes to save"
+            return true
+        }
+
         isSaving = true
         errorMessage = nil
         successMessage = nil
@@ -377,95 +516,34 @@ final class ProfileEditViewModel: ObservableObject {
         defer { isSaving = false }
 
         do {
-            // Update profile sections based on what changed
-            var anyUpdates = false
+            // Build unified request with all changed fields
+            let request = buildUnifiedRequest()
 
-            // 1. Update health metrics if changed
-            if hasHealthChanges() {
-                let request = ProfileHealthUpdateRequest(
-                    currentWeight: Double(currentWeightKg),
-                    targetWeight: Double(targetWeightKg),
-                    height: Double(heightCm),
-                    dateOfBirth: ISO8601DateFormatter().string(from: dateOfBirth)
-                )
+            // Log for debugging
+            Logger.info("Saving profile with changes: \(request.changedFields.joined(separator: ", "))")
 
-                let response: ProfileUpdateResponse = try await apiClient.request(.updateProfileHealth(request))
+            // Make single API call
+            let response: ProfileUpdateResponse = try await apiClient.request(.updateProfileData(request))
 
-                if let updated = response.planUpdated, updated {
-                    planUpdated = true
-                }
-                if let changes = response.changes {
-                    targetChanges = changes
-                }
-
-                anyUpdates = true
-                Logger.info("Health metrics updated successfully")
+            // Update plan state
+            if let updated = response.planUpdated, updated {
+                planUpdated = true
+                targetChanges = response.changes
             }
 
-            // 2. Update goals if changed
-            if hasGoalChanges() {
-                let request = ProfileGoalsUpdateRequest(
-                    primaryGoal: primaryGoal.rawValue,
-                    targetWeight: Double(targetWeightKg),
-                    targetDate: ISO8601DateFormatter().string(from: targetDate),
-                    activityLevel: activityLevel.rawValue
-                )
+            // Show success toast with plan impact
+            toastPlanWillUpdate = planUpdated
+            toastTargetChanges = targetChanges
+            showSuccessToast = true
 
-                let response: ProfileUpdateResponse = try await apiClient.request(.updateProfileGoals(request))
+            // Trigger haptic feedback
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
 
-                if let updated = response.planUpdated, updated {
-                    planUpdated = true
-                }
-                if let changes = response.changes {
-                    targetChanges = changes
-                }
+            // Reload profile to get fresh data
+            await loadProfile()
 
-                anyUpdates = true
-                Logger.info("Goals updated successfully")
-            }
-
-            // 3. Update preferences if changed
-            if hasPreferenceChanges() {
-                let request = ProfilePreferencesUpdateRequest(
-                    dietaryPreferences: dietaryPreferences.isEmpty ? nil : dietaryPreferences,
-                    allergies: allergies.isEmpty ? nil : allergies,
-                    mealsPerDay: mealsPerDay
-                )
-
-                let _: ProfileUpdateResponse = try await apiClient.request(.updateProfilePreferences(request))
-
-                anyUpdates = true
-                Logger.info("Preferences updated successfully")
-            }
-
-            // 4. Update basic profile (name/email) if changed
-            if name != originalProfile?.user.name || email != originalProfile?.user.email {
-                let _: User = try await apiClient.request(
-                    .updateProfile(
-                        name: name != originalProfile?.user.name ? name : nil,
-                        email: email != originalProfile?.user.email ? email : nil
-                    )
-                )
-
-                anyUpdates = true
-                Logger.info("Basic profile updated successfully")
-            }
-
-            // Show success feedback
-            if anyUpdates {
-                // Show success toast with plan impact
-                toastPlanWillUpdate = planUpdated
-                toastTargetChanges = targetChanges
-                showSuccessToast = true
-
-                // Trigger haptic feedback
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.success)
-
-                // Reload profile
-                await loadProfile()
-            }
-
+            Logger.info("Profile saved successfully. Plan updated: \(planUpdated)")
             return true
 
         } catch let error as APIError {
@@ -499,37 +577,91 @@ final class ProfileEditViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Change Detection
+    // MARK: - Request Builder
 
-    private func hasHealthChanges() -> Bool {
-        guard let original = originalProfile else { return false }
+    private func buildUnifiedRequest() -> ProfileUpdateRequest {
+        // Configure formatter to match API format (with fractional seconds)
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
-        let currentWeightChanged = !currentWeightKg.isEmpty &&
-            Double(currentWeightKg) != original.health?.currentWeight
-        let targetWeightChanged = !targetWeightKg.isEmpty &&
-            Double(targetWeightKg) != original.health?.targetWeight
-        let heightChanged = !heightCm.isEmpty &&
-            Double(heightCm) != original.demographics?.height
+        guard let original = originalProfile else {
+            // If no original profile, send all fields
+            return ProfileUpdateRequest(
+                dateOfBirth: formatter.string(from: dateOfBirth),
+                gender: gender.rawValue,
+                height: Double(heightCm),
+                currentWeight: Double(currentWeightKg),
+                targetWeight: Double(targetWeightKg),
+                primaryGoal: primaryGoal.rawValue,
+                targetDate: formatter.string(from: targetDate),
+                activityLevel: activityLevel.rawValue,
+                dietaryPreferences: dietaryPreferences.isEmpty ? nil : dietaryPreferences,
+                allergies: allergies.isEmpty ? nil : allergies,
+                mealsPerDay: mealsPerDay
+            )
+        }
 
-        return currentWeightChanged || targetWeightChanged || heightChanged
+        // Build request with only changed fields
+        return ProfileUpdateRequest(
+            dateOfBirth: {
+                let dob = formatter.string(from: dateOfBirth)
+                return dob != original.demographics?.dateOfBirth ? dob : nil
+            }(),
+            gender: {
+                let newGender = gender.rawValue
+                return newGender != original.demographics?.gender ? newGender : nil
+            }(),
+            height: {
+                guard let height = Double(heightCm) else { return nil }
+                if let originalHeight = original.demographics?.height {
+                    return abs(height - originalHeight) > 0.1 ? height : nil
+                }
+                return height
+            }(),
+            currentWeight: {
+                guard let weight = Double(currentWeightKg) else { return nil }
+                if let originalWeight = original.health?.currentWeight {
+                    return abs(weight - originalWeight) > 0.1 ? weight : nil
+                }
+                return weight
+            }(),
+            targetWeight: {
+                guard let target = Double(targetWeightKg) else { return nil }
+                if let originalTarget = original.health?.targetWeight {
+                    return abs(target - originalTarget) > 0.1 ? target : nil
+                }
+                return target
+            }(),
+            primaryGoal: {
+                let newGoal = primaryGoal.rawValue
+                return newGoal != original.goals?.primaryGoal ? newGoal : nil
+            }(),
+            targetDate: {
+                let targetDateStr = formatter.string(from: targetDate)
+                return targetDateStr != original.goals?.targetDate ? targetDateStr : nil
+            }(),
+            activityLevel: {
+                let newActivity = activityLevel.rawValue
+                return newActivity != original.goals?.activityLevel ? newActivity : nil
+            }(),
+            dietaryPreferences: {
+                let newPrefs = dietaryPreferences
+                let originalPrefs = original.preferences?.dietaryPreferences ?? []
+                return newPrefs != originalPrefs ? (newPrefs.isEmpty ? nil : newPrefs) : nil
+            }(),
+            allergies: {
+                let newAllergies = allergies
+                let originalAllergies = original.preferences?.allergies ?? []
+                return newAllergies != originalAllergies ? (newAllergies.isEmpty ? nil : newAllergies) : nil
+            }(),
+            mealsPerDay: {
+                let newMeals = mealsPerDay
+                let originalMeals = original.preferences?.mealsPerDay ?? 3
+                return newMeals != originalMeals ? newMeals : nil
+            }()
+        )
     }
 
-    private func hasGoalChanges() -> Bool {
-        guard let original = originalProfile else { return false }
-
-        let goalChanged = primaryGoal.rawValue != original.goals?.primaryGoal
-        let activityChanged = activityLevel.rawValue != original.goals?.activityLevel
-
-        return goalChanged || activityChanged
-    }
-
-    private func hasPreferenceChanges() -> Bool {
-        guard let original = originalProfile else { return false }
-
-        return dietaryPreferences != (original.preferences?.dietaryPreferences ?? []) ||
-               allergies != (original.preferences?.allergies ?? []) ||
-               mealsPerDay != (original.preferences?.mealsPerDay ?? 3)
-    }
 
     // MARK: - Field-Specific Error Messages
 

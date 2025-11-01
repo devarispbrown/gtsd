@@ -39,7 +39,13 @@ nonisolated(unsafe) struct UpdatePreferencesResponse: Codable, Sendable {
 
 // MARK: - Profile Responses
 
-/// Complete profile response from GET /v1/auth/profile
+/// Wrapper for GET /v1/profile response
+nonisolated(unsafe) struct GetProfileResponse: Codable, Sendable {
+    let success: Bool
+    let profile: ProfileResponse
+}
+
+/// Complete profile data structure
 nonisolated(unsafe) struct ProfileResponse: Codable, Sendable {
     let user: UserBasic
     let demographics: Demographics?
@@ -98,29 +104,6 @@ nonisolated(unsafe) struct ProfileResponse: Codable, Sendable {
             mealsPerDay: preferences?.mealsPerDay
         )
     }
-}
-
-/// Update request for health metrics
-nonisolated(unsafe) struct ProfileHealthUpdateRequest: Codable, Sendable {
-    let currentWeight: Double?
-    let targetWeight: Double?
-    let height: Double?
-    let dateOfBirth: String?
-}
-
-/// Update request for goals
-nonisolated(unsafe) struct ProfileGoalsUpdateRequest: Codable, Sendable {
-    let primaryGoal: String?
-    let targetWeight: Double?
-    let targetDate: String?
-    let activityLevel: String?
-}
-
-/// Update request for preferences
-nonisolated(unsafe) struct ProfilePreferencesUpdateRequest: Codable, Sendable {
-    let dietaryPreferences: [String]?
-    let allergies: [String]?
-    let mealsPerDay: Int?
 }
 
 /// Update response from profile endpoints
